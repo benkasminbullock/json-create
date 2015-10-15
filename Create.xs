@@ -14,3 +14,11 @@ PROTOTYPES: DISABLE
 BOOT:
 	/* JSON__Create_error_handler = perl_error_handler; */
 
+SV *
+create_json (input)
+	SV * input;
+PREINIT:
+CODE:
+	RETVAL = json_create (input);
+OUTPUT:
+	RETVAL
