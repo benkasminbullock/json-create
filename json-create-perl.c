@@ -36,7 +36,6 @@ json_create_error_handler_default (const char * file, int line_number, const cha
 static int (* json_create_error_handler) (const char * file, int line_number, const char * msg, ...) = json_create_error_handler_default;
 
 #define JCEH json_create_error_handler
-#define ADD_LITERAL(x,y) sv_catpvn (x, #y, (STRLEN) strlen (#y))
 
 #define CALL(x) {						\
 	json_create_status_t status;				\
@@ -311,7 +310,6 @@ json_create_recursively (json_create_t * jc, SV * input)
 	    break;
 
 	case SVt_PVGV:
-	case SVt_PVCV:
 	case SVt_REGEXP:
 	    /* Use it as a string. */
 	    CALL (json_create_add_string (jc, r));
