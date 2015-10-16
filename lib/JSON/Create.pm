@@ -34,7 +34,7 @@ require Exporter;
 use warnings;
 use strict;
 use Carp;
-our $VERSION = '0.00_01';
+our $VERSION = '0.00_02';
 require XSLoader;
 XSLoader::load ('JSON::Create', $VERSION);
 1;

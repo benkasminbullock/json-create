@@ -260,7 +260,7 @@ json_create_add_array (json_create_t * jc, AV * av)
     SV * value;
 
     CALL (add_char (jc, '['));
-    n_keys = av_top_index (av) + 1;
+    n_keys = av_len (av) + 1;
     for (i = 0; i < n_keys; i++) {
 	if (i > 0) {
 	    CALL (add_char (jc, ','));
@@ -310,10 +310,18 @@ json_create_recursively (json_create_t * jc, SV * input)
 	    break;
 
 	case SVt_PVGV:
+	    /* Completely untested. */
+	    CALL (json_create_add_string (jc, r));
+	    break;
+
+#ifdef SvRX
+
 	case SVt_REGEXP:
 	    /* Use it as a string. */
 	    CALL (json_create_add_string (jc, r));
 	    break;
+
+#endif /* def SvRX */
 
 	default:
 	    if (JCEH) {
