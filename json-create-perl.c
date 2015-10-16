@@ -195,7 +195,7 @@ json_create_add_key_len (json_create_t * jc, const unsigned char * key, STRLEN k
 }
 
 static json_create_status_t
-json_create_add_string (SV * input, json_create_t * jc)
+json_create_add_string (json_create_t * jc, SV * input)
 {
     int i;
     char * istring;
@@ -204,12 +204,35 @@ json_create_add_string (SV * input, json_create_t * jc)
     return json_create_add_key_len (jc, (unsigned char *) istring, (STRLEN) ilength);
 }
 
-static json_create_status_t
-json_create_add_object (HV * input_hv, json_create_t * jc)
+static inline json_create_status_t
+json_create_add_integer (json_create_t * jc, SV * sv)
+{
+    long int iv;
+    STRLEN ivlen;
+    char ivbuf[0x40];
+    iv = SvIV (sv);
+    ivlen = snprintf (ivbuf, 0x40, "%ld", iv);
+    CALL (add_str_len (jc, ivbuf, ivlen));
+    return json_create_ok;
+}
+
+static inline json_create_status_t
+json_create_add_float (json_create_t * jc, SV * sv)
+{
+    double fv;
+    STRLEN fvlen;
+    char fvbuf[0x40];
+    fv = SvNV (sv);
+    fvlen = snprintf (fvbuf, 0x40, "%g", fv);
+    CALL (add_str_len (jc, fvbuf, fvlen));
+    return json_create_ok;
+}
+
+static inline json_create_status_t
+json_create_add_object (json_create_t * jc, HV * input_hv)
 {
     I32 n_keys;
     int i;
-    int key_n;
     SV * value;
     char * key;
     I32 keylen;
@@ -230,6 +253,26 @@ json_create_add_object (HV * input_hv, json_create_t * jc)
     return json_create_ok;
 }
 
+static inline json_create_status_t
+json_create_add_array (json_create_t * jc, AV * av)
+{
+    I32 n_keys;
+    int i;
+    SV * value;
+
+    CALL (add_char (jc, '['));
+    n_keys = av_top_index (av) + 1;
+    for (i = 0; i < n_keys; i++) {
+	if (i > 0) {
+	    CALL (add_char (jc, ','));
+	}
+	value = * (av_fetch (av, i, 0 /* don't delete the array value */));
+	CALL (json_create_recursively (jc, value));
+    }
+    CALL (add_char (jc, ']'));
+    return json_create_ok;
+}
+
 static json_create_status_t
 json_create_recursively (json_create_t * jc, SV * input)
 {
@@ -244,16 +287,36 @@ json_create_recursively (json_create_t * jc, SV * input)
     if (SvROK (input)) {
 	SV * r = SvRV (input);
 	is = SvTYPE (r);
+
 	switch (is) {
+
 	case SVt_PVAV:
+	    CALL (json_create_add_array (jc, (AV *) r));
 	    break;
+
 	case SVt_PVHV:
-	    CALL (json_create_add_object ((HV *) r, jc));
+	    CALL (json_create_add_object (jc, (HV *) r));
 	    break;
-	case SVt_PVCV:
+
+	case SVt_PV:
+	    CALL (json_create_add_string (jc, r));
 	    break;
+
+	case SVt_IV:
+	    CALL (json_create_add_integer (jc, r));
+	    break;
+
+	case SVt_NV:
+	    CALL (json_create_add_float (jc, r));
+	    break;
+
 	case SVt_PVGV:
+	case SVt_PVCV:
+	case SVt_REGEXP:
+	    /* Use it as a string. */
+	    CALL (json_create_add_string (jc, r));
 	    break;
+
 	default:
 	    if (JCEH) {
 		(*JCEH) (__FILE__, __LINE__, "Unknown Perl type %d in switch",
@@ -270,8 +333,16 @@ json_create_recursively (json_create_t * jc, SV * input)
 	    return json_create_ok;
 
 	case SVt_PV:
-	    CALL (json_create_add_string (input, jc));
+	    CALL (json_create_add_string (jc, input));
 	    return json_create_ok;
+
+	case SVt_IV:
+	    CALL (json_create_add_integer (jc, input));
+	    break;
+
+	case SVt_NV:
+	    CALL (json_create_add_float (jc, input));
+	    break;
 
 	default:
 	    if (JCEH) {
