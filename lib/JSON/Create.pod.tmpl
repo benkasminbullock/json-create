@@ -1,0 +1,74 @@
+=encoding UTF-8
+
+=head1 NAME
+
+JSON::Create - turn a Perl variable into JSON
+
+=head1 SYNOPSIS
+
+    use JSON::Create 'create_json';
+    my %hash = (a => b, c => d);
+    my $json = create_json (\%hash);
+    # Now $json contains '{"a":"b","c":"d"}', or similar.
+
+=head1 DESCRIPTION
+
+This module produces JSON out of Perl
+
+It currently works for the simple cases of strings, nested hashes and
+arrays, but it is in very early testing stages.
+
+=head1 FUNCTIONS
+
+=head2 create_json
+
+    my $json = create_json (\%hash);
+
+Convert a Perl hash or array into JSON.
+
+=head1 CONVERSIONS
+
+=head2 scalars
+
+Scalars are converted to strings, JSON integers or JSON floats
+depending on what Perl says they contain. 
+
+Bytes of value less than 0x20 are converted into the appropriate JSON
+escapes. Currently no escaping or checking is done for Unicode bytes.
+
+If the scalar contains a regex then JSON::Create lets Perl convert
+that to a string then adds that.
+
+There is no handling whatsoever of the more esoteric Perl scalars such
+as code references or glob values at the moment.
+
+Undefined values are mapped to the JSON literal "null".
+
+=head2 hashes
+
+Associative arrays are converted to JSON objects. The keys are escaped
+into JSON. The order of the keys is as they are supplied by Perl.
+
+=head2 arrays
+
+Arrays are converted to JSON arrays. The order of the array is
+identical to the Perl one.
+
+=head1 SEE ALSO
+
+This module is a companion module to the same author's
+L<JSON::Parse>. Please see that module's documentation for links to
+the JSON standard itself and a summary of the ever-growing list of
+JSON modules on CPAN.
+
+=head1 HISTORY
+
+I started making this module so that, with this and JSON::Parse, I
+wouldn't have to ever use any of the existing JSON modules on CPAN
+ever again. See also L</SEE ALSO>. The exact time I've spent making
+this module is recorded in the file F<timestamp.txt> in the top
+directory of the distribution.
+
+=cut
+
+[% INCLUDE "author" %]

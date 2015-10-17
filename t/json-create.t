@@ -24,12 +24,21 @@ my $json_nested_array = create_json ($nested_array);
 ok (valid_json ($json_nested_array), "Nested array JSON valid");
 is ($json_nested_array, '["let\'s",["try",["it",["another",["way"]]]]]', "Nested array JSON correct");
 
-my $rx = qr/See+ Emily play/;
-my $rx_json = create_json ($rx);
-ok (valid_json ($rx_json), "regex JSON valid");
-# "stringified" regexes are different on different Perls.
-# http://www.cpantesters.org/cpan/report/bf3447c2-744c-11e5-9c9f-1c89e0bfc7aa
-like ($rx_json, qr/See\+ Emily play/, "regex JSON as expected");
+SKIP: {
+    # https://metacpan.org/source/JKEENAN/ExtUtils-ModuleMaker-0.54/t/03_quick.t#L15
+    eval {
+	require 5.012_000;
+    };
+    if ($@) {
+	skip "Regex serialization not available for Perl < 5.12";
+    }
+    my $rx = qr/See+ Emily play/;
+    my $rx_json = create_json ($rx);
+    ok (valid_json ($rx_json), "regex JSON valid");
+    # "stringified" regexes are different on different Perls.
+    # http://www.cpantesters.org/cpan/report/bf3447c2-744c-11e5-9c9f-1c89e0bfc7aa
+    like ($rx_json, qr/See\+ Emily play/, "regex JSON as expected");
+};
 
 my $numbers = [1,2,3,4,5,6];
 my $numbers_json = create_json ($numbers);

@@ -3,13 +3,14 @@ use warnings;
 use ExtUtils::MakeMaker;
 
 my $pm = 'lib/JSON/Create.pm';
+my $pod = 'lib/JSON/Create.pod';
 my $github = 'github.com/benkasminbullock/json-create';
 my $repo = "https://$github";
 
 WriteMakefile (
     NAME => 'JSON::Create',
     VERSION_FROM => $pm,
-    ABSTRACT_FROM => $pm,
+    ABSTRACT_FROM => $pod,
     AUTHOR => 'Ben Bullock <bkb@cpan.org>',
     LICENSE => 'perl',
     PREREQ_PM => {
@@ -21,12 +22,12 @@ WriteMakefile (
 	},
         resources => {
             repository => {
-		type => 'git',
-		url => "git://$github.git",
-		web => $repo,
+	    	type => 'git',
+	    	url => "git://$github.git",
+	    	web => $repo,
 	    },
             bugtracker => {
-		web => "$repo/issues",
+	    	web => "$repo/issues",
 	    },
 #	    homepage => 'http://',
         },
