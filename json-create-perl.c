@@ -272,88 +272,101 @@ json_create_add_array (json_create_t * jc, AV * av)
     return json_create_ok;
 }
 
+/*
+
+Copied from
+
+https://metacpan.org/source/TOBYINK/match-simple-XS-0.001/XS.xs#L11
+
+via
+
+http://grep.cpan.me/?q=SvRX
+
+*/
+
+#ifndef SvRXOK
+ 
+#define SvRXOK(sv) is_regexp(aTHX_ sv)
+ 
+static inline int
+is_regexp (pTHX_ SV* sv) {
+        SV* tmpsv;
+         
+        if (SvMAGICAL(sv))
+        {
+                mg_get(sv);
+        }
+         
+        if (SvROK(sv)
+        && (tmpsv = (SV*) SvRV(sv))
+        && SvTYPE(tmpsv) == SVt_PVMG 
+        && (mg_find(tmpsv, PERL_MAGIC_qr)))
+        {
+                return TRUE;
+        }
+         
+        return FALSE;
+}
+ 
+#endif
+
+/* <-- End of Toby Inkster contribution. Thank you. */
+
 static json_create_status_t
 json_create_recursively (json_create_t * jc, SV * input)
 {
-    /* The SV type of input. */
-    svtype is;
-
     if (! SvOK (input)) {
 	CALL (add_str (jc, "null"));
 	return json_create_ok;
     }
-    is = SvTYPE (input);
     if (SvROK (input)) {
 	SV * r = SvRV (input);
-	is = SvTYPE (r);
-
-	switch (is) {
-
-	case SVt_PVAV:
+	if (SvTYPE (r) == SVt_PVAV) {
 	    CALL (json_create_add_array (jc, (AV *) r));
-	    break;
-
-	case SVt_PVHV:
+	}
+	else if (SvTYPE (r) == SVt_PVHV) {
 	    CALL (json_create_add_object (jc, (HV *) r));
-	    break;
-
-	case SVt_PV:
-	    CALL (json_create_add_string (jc, r));
-	    break;
-
-	case SVt_IV:
-	    CALL (json_create_add_integer (jc, r));
-	    break;
-
-	case SVt_NV:
-	    CALL (json_create_add_float (jc, r));
-	    break;
-
-	case SVt_PVGV:
+	}
+	else if (SvTYPE (r) == SVt_PVGV) {
 	    /* Completely untested. */
 	    CALL (json_create_add_string (jc, r));
-	    break;
-
-#ifdef SvRX
-
-	case SVt_REGEXP:
+	}
+	else if (SvRXOK (r)) {
 	    /* Use it as a string. */
 	    CALL (json_create_add_string (jc, r));
-	    break;
-
-#endif /* def SvRX */
-
-	default:
+	}
+	else {
+	    /* The SV type of input. */
 	    if (JCEH) {
-		(*JCEH) (__FILE__, __LINE__, "Unknown Perl type %d in switch",
-			 is);
+		(*JCEH) (__FILE__, __LINE__,
+			 "Unknown Perl type %d",
+			 SvTYPE (r));
 	    }
 	    return json_create_unknown_type;
 	}
     }
     else {
-	switch (is) {
-
-	case SVt_NULL:
+	SV * r = input;
+	if (SvTYPE (r) == SVt_NULL) {
 	    CALL (add_str (jc, "null"));
 	    return json_create_ok;
-
-	case SVt_PV:
-	    CALL (json_create_add_string (jc, input));
+	}
+	else if (SvTYPE (r) == SVt_PV) {
+	    CALL (json_create_add_string (jc, r));
 	    return json_create_ok;
-
-	case SVt_IV:
-	    CALL (json_create_add_integer (jc, input));
-	    break;
-
-	case SVt_NV:
-	    CALL (json_create_add_float (jc, input));
-	    break;
-
-	default:
+	}
+	else if (SvTYPE (r) == SVt_IV) {
+	    CALL (json_create_add_integer (jc, r));
+	    return json_create_ok;
+	}
+	else if (SvTYPE (r) == SVt_NV) {
+	    CALL (json_create_add_float (jc, r));
+	    return json_create_ok;
+	}
+	else {
 	    if (JCEH) {
-		(*JCEH) (__FILE__, __LINE__, "Unknown Perl type %d in switch",
-			 is);
+		(*JCEH) (__FILE__, __LINE__, "Unknown Perl type %d",
+			 SvTYPE (r));
 	    }
 	    return json_create_unknown_type;
 	}

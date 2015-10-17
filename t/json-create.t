@@ -27,7 +27,9 @@ is ($json_nested_array, '["let\'s",["try",["it",["another",["way"]]]]]', "Nested
 my $rx = qr/See+ Emily play/;
 my $rx_json = create_json ($rx);
 ok (valid_json ($rx_json), "regex JSON valid");
-is ($rx_json, '"(?^:See+ Emily play)"', "regex JSON as expected");
+# "stringified" regexes are different on different Perls.
+# http://www.cpantesters.org/cpan/report/bf3447c2-744c-11e5-9c9f-1c89e0bfc7aa
+like ($rx_json, qr/See\+ Emily play/, "regex JSON as expected");
 
 my $numbers = [1,2,3,4,5,6];
 my $numbers_json = create_json ($numbers);
