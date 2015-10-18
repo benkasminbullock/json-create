@@ -9,3 +9,8 @@ MYMETA..*
 ^JSON-Create-[0-9\.]+/$
 ^JSON-Create-[0-9\.]+\.tar\.gz$
 ^Create.(?:c|o|bs)$
+# Round-trip script, not in CPAN distro for the time being.
+^rt\.pl$
+# Template for the POD
+^lib/JSON/Create\.pod\.tmpl$
+^timesheet$

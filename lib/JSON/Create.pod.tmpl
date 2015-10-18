@@ -1,3 +1,4 @@
+[%- start_year = '2015' -%]
 =encoding UTF-8
 
 =head1 NAME
@@ -54,6 +55,11 @@ into JSON. The order of the keys is as they are supplied by Perl.
 Arrays are converted to JSON arrays. The order of the array is
 identical to the Perl one.
 
+=head1 EXPORTS
+
+The module exports nothing except by request. One function,
+L</create_json>, is exported on request.
+
 =head1 SEE ALSO
 
 This module is a companion module to the same author's
@@ -66,8 +72,9 @@ JSON modules on CPAN.
 I started making this module so that, with this and JSON::Parse, I
 wouldn't have to ever use any of the existing JSON modules on CPAN
 ever again. See also L</SEE ALSO>. The exact time I've spent making
-this module is recorded in the file F<timestamp.txt> in the top
-directory of the distribution.
+this module is recorded in the file F<timesheet.txt> in the top
+directory of the distribution. At the time of version 0.01, I've spent
+4 hours and 21 minutes working on this.
 
 =cut
 
