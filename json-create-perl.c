@@ -222,6 +222,24 @@ json_create_add_float (json_create_t * jc, SV * sv)
     return json_create_ok;
 }
 
+/* Add a number which is already stringified. This bypasses snprintf
+   and just copies the Perl string straight into the buffer. */
+
+static inline json_create_status_t
+json_create_add_stringified (json_create_t * jc, SV *r)
+{
+    /* Stringified number. */
+    char * s;
+    /* Length of "r". */
+    STRLEN rlen;
+    s = SvPV (r, rlen);
+    /* This doesn't backtrace correctly, but the calling routine
+       should print out that it was calling add_stringified, so as
+       long as we're careful not to ignore the caller line, it
+       shouldn't matter. */
+    return add_str_len (jc, s, (unsigned int) rlen);
+}
+
 static inline json_create_status_t
 json_create_add_object (json_create_t * jc, HV * input_hv)
 {
@@ -315,46 +333,75 @@ json_create_recursively (json_create_t * jc, SV * input)
 	return json_create_ok;
     }
     if (SvROK (input)) {
-	SV * r = SvRV (input);
-	if (SvTYPE (r) == SVt_PVAV) {
+	svtype t;
+	SV * r;
+	r = SvRV (input);
+	t = SvTYPE (r);
+	switch (t) {
+	case SVt_PVAV:
 	    CALL (json_create_add_array (jc, (AV *) r));
-	}
-	else if (SvTYPE (r) == SVt_PVHV) {
+	    break;
+
+	case SVt_PVHV:
 	    CALL (json_create_add_object (jc, (HV *) r));
-	}
-	else if (SvTYPE (r) == SVt_PVGV) {
+	    break;
+
+	case SVt_PVMG:
+	    CALL (json_create_add_string (jc, r));
+	    break;
+
+	case SVt_PVGV:
 	    /* Completely untested. */
 	    CALL (json_create_add_string (jc, r));
-	}
-	else if (SvRXOK (r)) {
-	    /* Use it as a string. */
-	    CALL (json_create_add_string (jc, r));
-	}
-	else {
-	    /* The SV type of input. */
-	    if (JCEH) {
-		(*JCEH) (__FILE__, __LINE__,
-			 "Unknown Perl type %d",
-			 SvTYPE (r));
+	    break;
+
+	default:
+	    if (SvRXOK (r)) {
+		/* Use it as a string. */
+		CALL (json_create_add_string (jc, r));
 	    }
-	    return json_create_unknown_type;
+	    else {
+		/* The SV type of input. */
+		if (JCEH) {
+		    (*JCEH) (__FILE__, __LINE__,
+			     "Unknown Perl type %d",
+			     SvTYPE (r));
+		}
+		return json_create_unknown_type;
+	    }
 	}
     }
     else {
 	SV * r = input;
-	if (SvTYPE (r) == SVt_NULL) {
+	svtype t;
+	t = SvTYPE (r);
+	switch (t) {
+
+	case SVt_NULL:
 	    ADD ("null");
-	}
-	else if (SvTYPE (r) == SVt_PV) {
+	    break;
+
+	case SVt_PV:
+	case SVt_PVMG:
 	    CALL (json_create_add_string (jc, r));
-	}
-	else if (SvTYPE (r) == SVt_IV) {
+	    break;
+
+	case SVt_IV:
 	    CALL (json_create_add_integer (jc, r));
-	}
-	else if (SvTYPE (r) == SVt_NV) {
+	    break;
+
+	case SVt_NV:
 	    CALL (json_create_add_float (jc, r));
-	}
-	else {
+	    break;
+
+	case SVt_PVNV:
+	case SVt_PVIV:
+	    CALL (json_create_add_stringified (jc, r));
+	    break;
+	    
+	default:
+	    fprintf (stderr, "%s: %d: values %d %d\n",
+		     __FILE__, __LINE__, SVt_PVNV, SvTYPE(r));
 	    if (JCEH) {
 		(*JCEH) (__FILE__, __LINE__, "Unknown Perl type %d",
 			 SvTYPE (r));

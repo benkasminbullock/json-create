@@ -54,3 +54,14 @@
 
 2015-10-20 10:51:08
 2015-10-20 10:59:08
+
+# Move the prerequisite from PREREQ_PM to test requires.
+# Start employing in e2k.
+
+2015-10-20 12:42:32
+2015-10-20 13:31:10
+
+# As above
+
+2015-10-20 14:25:05
+2015-10-20 15:00:33

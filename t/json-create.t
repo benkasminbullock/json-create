@@ -56,7 +56,32 @@ is ($fnumbers_json, '[0.5,0.25]', "round floating point numbers");
 run (undef, 'null');
 run ({'a' => undef},'{"a":null}');
 
+# The following tests the SVt_PVMG code path
+
+# When UTF-8 validation is added, this will change to use utf8, but at
+# the moment the module doesn't validate Unicode inputs so it cannot
+# be so. Switching the UTF-8 flags on and off within a module requires
+# the module author to independently do full-blown UTF-8 validation on
+# everything (!).
+
+no utf8;
+
+package Ba::Bi::Bu::Be::Bo;
+
+sub new
+{
+    my $lion = 'ライオン';
+    return bless \$lion;
+}
+
+package main;
+
+my $babibubebo = Ba::Bi::Bu::Be::Bo->new ();
+my $zoffixznet = {"babibubebo" => $babibubebo};
+run ($zoffixznet, qr/\"ライオン\"/);
+
 done_testing ();
+exit;
 # Local variables:
 # mode: perl
 # End:
@@ -68,13 +93,14 @@ sub run
     eval {
 	$output = create_json ($input);
     };
+#    print "$output\n";
     ok (! $@, "no errors on input");
     ok (valid_json ($output), "output is valid JSON");
     if (ref $test eq 'CODE') {
 	&{$test} ($input, $output);
     }
     elsif (ref $test eq 'Regexp') {
-	like ($input, $test, "input looks as expected");
+	like ($output, $test, "input looks as expected");
     }
     elsif (! defined $test) {
 	# skip this test
