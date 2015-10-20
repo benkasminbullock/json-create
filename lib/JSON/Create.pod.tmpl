@@ -29,31 +29,39 @@ Convert a Perl hash or array into JSON.
 
 =head1 CONVERSIONS
 
-=head2 scalars
+=head2 Scalars
 
 Scalars are converted to strings, JSON integers or JSON floats
 depending on what Perl says they contain. 
 
 Bytes of value less than 0x20 are converted into the appropriate JSON
-escapes. Currently no escaping or checking is done for Unicode bytes.
+escapes. Currently, no escaping or checking is done for Unicode
+bytes.
 
 If the scalar contains a regex then JSON::Create lets Perl convert
-that to a string then adds that.
+that to a string then adds that. The output depends on the Perl
+version.
 
 There is no handling whatsoever of the more esoteric Perl scalars such
 as code references or glob values at the moment.
 
 Undefined values are mapped to the JSON literal "null".
 
-=head2 hashes
+=head2 Hashes
 
 Associative arrays are converted to JSON objects. The keys are escaped
 into JSON. The order of the keys is as they are supplied by Perl.
 
-=head2 arrays
+=head2 Arrays
 
 Arrays are converted to JSON arrays. The order of the array is
 identical to the Perl one.
+
+=head2 Code references
+
+Code references throw an error. Please see also
+L<https://github.com/benkasminbullock/json-create/issues/3> this
+discussion.
 
 =head1 EXPORTS
 
@@ -67,14 +75,19 @@ L<JSON::Parse>. Please see that module's documentation for links to
 the JSON standard itself and a summary of the ever-growing list of
 JSON modules on CPAN.
 
+=head1 ACKNOWLEDGEMENTS
+
+Zoffix Znet (ZOFFIX) reported an important bug with undefined values,
+and various other issues.
+
 =head1 HISTORY
 
 I started making this module so that, with this and JSON::Parse, I
 wouldn't have to ever use any of the existing JSON modules on CPAN
 ever again. See also L</SEE ALSO>. The exact time I've spent making
 this module is recorded in the file F<timesheet.txt> in the top
-directory of the distribution. At the time of version 0.01, I've spent
-4 hours and 21 minutes working on this.
+directory of the distribution. At the time of version 0.02, I've spent
+5 hours and 19 minutes working on this.
 
 =cut
 

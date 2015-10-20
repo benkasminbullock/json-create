@@ -8,7 +8,7 @@ require Exporter;
 use warnings;
 use strict;
 use Carp;
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 require XSLoader;
 XSLoader::load ('JSON::Create', $VERSION);
 1;

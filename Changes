@@ -1,3 +1,6 @@
+0.02 2015-10-20
+* Undefined values are now printed as "null"
+
 0.01 2015-10-18
 * Initial version released to CPAN
 
