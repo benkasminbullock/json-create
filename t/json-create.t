@@ -52,7 +52,8 @@ is ($fnumbers_json, '[0.5,0.25]', "round floating point numbers");
 #my $json_code = create_json ($code);
 #print $json_code;
 
-run (undef, '"null"');
+# Undefined should give us the bare value "null".
+run (undef, 'null');
 run ({'a' => undef},'{"a":null}');
 
 done_testing ();

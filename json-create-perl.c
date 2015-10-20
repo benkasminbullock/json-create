@@ -108,15 +108,10 @@ static inline json_create_status_t
 add_str (json_create_t * jc, const char * s)
 {
     int i;
-    i = 0;
-    while (1) {
+    for (i = 0; s[i]; i++) {
 	unsigned char c;
-	if (c == 0) {
-	    return json_create_ok;
-	}
 	c = (unsigned char) s[i];
 	CALL (add_char (jc, c));
-	i++;
     }
     return json_create_ok;
 }
@@ -316,7 +311,7 @@ static json_create_status_t
 json_create_recursively (json_create_t * jc, SV * input)
 {
     if (! SvOK (input)) {
-	CALL (add_str (jc, "null"));
+	ADD ("null");
 	return json_create_ok;
     }
     if (SvROK (input)) {
