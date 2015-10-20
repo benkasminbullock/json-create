@@ -57,10 +57,11 @@ static int (* json_create_error_handler) (const char * file, int line_number, co
     }
 
 #define BUFSIZE 0x4000
+/* Add a margin of 16 bytes in case some stupid code reads after the
+   end of the buffer. */
+#define MARGIN 0x10
 
 typedef struct json_create {
-    /* The size we have to use before we write the buffer out. */
-    int size;
     /* The length of the input string. */
     int length;
     unsigned char buffer[BUFSIZE];
@@ -69,9 +70,10 @@ typedef struct json_create {
 }
 json_create_t;
 
-/* Everything else in this file is ordered from caller to callee, but
-   because of the recursion, we need to forward-declare
-   json_create_recursively. */
+/* Everything else in this file is ordered from callee at the top to
+   caller at the bottom, but because of the recursion as we look at
+   JSON values within arrays or hashes, we need to forward-declare
+   "json_create_recursively". */
 
 static json_create_status_t
 json_create_recursively (json_create_t * jc, SV * input);
@@ -96,6 +98,9 @@ json_create_buffer_fill (json_create_t * jc)
     else {
 	sv_catpvn (jc->output, (char *) jc->buffer, (STRLEN) jc->length);
     }
+    /* "Empty" the buffer, we don't bother cleaning out the old
+       values, so "jc->length" is our only clue as to the clean/dirty
+       state of the buffer. */
     jc->length = 0;
     return json_create_ok;
 }
@@ -107,7 +112,8 @@ add_char (json_create_t * jc, unsigned char c)
 {
     jc->buffer[jc->length] = c;
     jc->length++;
-    if (jc->length >= jc->size) {
+    /* The size we have to use before we write the buffer out. */
+    if (jc->length >= BUFSIZE - MARGIN) {
 	CALL (json_create_buffer_fill (jc));
     }
     return json_create_ok;
@@ -149,9 +155,12 @@ add_str_len (json_create_t * jc, const char * s, unsigned int slen)
 }
 
 /* "Add a string" macro, this just saves cut and pasting a string and
-   typing "strlen" over and over again. */
+   typing "strlen" over and over again. For ASCII values only, not
+   Unicode safe. */
 
 #define ADD(x) CALL (add_str_len (jc, x, strlen (x)));
+
+/* Add a "\u3000". */
 
 static INLINE json_create_status_t
 add_u (json_create_t * jc, unsigned int u)
@@ -217,7 +226,7 @@ json_create_add_key_len (json_create_t * jc, const unsigned char * key, STRLEN k
     return json_create_ok;
 }
 
-static json_create_status_t
+static INLINE json_create_status_t
 json_create_add_string (json_create_t * jc, SV * input)
 {
     int i;
@@ -264,11 +273,18 @@ json_create_add_stringified (json_create_t * jc, SV *r)
     STRLEN rlen;
     s = SvPV (r, rlen);
     /* This doesn't backtrace correctly, but the calling routine
-       should print out that it was calling add_stringified, so as
+       should print out that it was calling "add_stringified", so as
        long as we're careful not to ignore the caller line, it
        shouldn't matter. */
     return add_str_len (jc, s, (unsigned int) rlen);
 }
+
+/* Add the comma where necessary. */
+
+#define COMMA					\
+    if (i > 0) {				\
+	CALL (add_char (jc, ','));		\
+    }
 
 /* Given a reference to a hash in "input_hv", recursively process it
    into JSON. */
@@ -285,10 +301,7 @@ json_create_add_object (json_create_t * jc, HV * input_hv)
     CALL (add_char (jc, '{'));
     n_keys = hv_iterinit (input_hv);
     for (i = 0; i < n_keys; i++) {
-	/* Add the comma where necessary. */
-	if (i > 0) {
-	    CALL (add_char (jc, ','));
-	}
+	COMMA;
 	value = hv_iternextsv (input_hv, & key, & keylen);
 	CALL (json_create_add_key_len (jc, (const unsigned char *) key,
 				       (STRLEN) keylen));
@@ -312,13 +325,10 @@ json_create_add_array (json_create_t * jc, AV * av)
     CALL (add_char (jc, '['));
     n_keys = av_len (av) + 1;
     /* This deals correctly with empty arrays, since av_len is -1 if
-       the array is empty, so there is no testing of n_keys before
-       entering the loop. */
+       the array is empty, so we do not test for a valid n_keys value
+       before entering the loop. */
     for (i = 0; i < n_keys; i++) {
-	/* Add the comma where necessary. */
-	if (i > 0) {
-	    CALL (add_char (jc, ','));
-	}
+	COMMA;
 	value = * (av_fetch (av, i, 0 /* don't delete the array value */));
 	CALL (json_create_recursively (jc, value));
     }
@@ -382,7 +392,7 @@ json_create_recursively (json_create_t * jc, SV * input)
 {
     if (! SvOK (input)) {
 	/* We were told to add an undefined value, so put the literal
-	   'null' at the end of "jc" then return. */
+	   'null' (without quotes) at the end of "jc" then return. */
 	ADD ("null");
 	return json_create_ok;
     }
@@ -496,12 +506,14 @@ json_create (SV * input)
     json_create_t jc;
 
     jc.length = 0;
-    /* Add a margin of 16 bytes in case some stupid code reads after
-       the end of the buffer. */
-    jc.size = BUFSIZE - 0x10;
     /* Tell json_create_buffer_fill that it needs to allocate an
        SV. */
     jc.output = 0;
+
+    /* "jc.buffer" is dirty here, we have not initialized it, we are
+       just writing to uninitialized stack memory. "jc.length" is the
+       only thing we know is OK at this point. */
+
     /* Unleash the dogs. */
     FINALCALL (json_create_recursively (& jc, input));
     /* Copy the remaining text in jc's buffer into input. */
