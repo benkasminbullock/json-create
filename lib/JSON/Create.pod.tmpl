@@ -38,12 +38,13 @@ Bytes of value less than 0x20 are converted into the appropriate JSON
 escapes. Currently, no escaping or checking is done for Unicode
 bytes.
 
-If the scalar contains a regex then JSON::Create lets Perl convert
-that to a string then adds that. The output depends on the Perl
+=head2 Regexes
+
+If the scalar contains a regex then JSON::Create lets Perl convert the
+regex to a string then adds that. The output depends on the Perl
 version.
 
-There is no handling whatsoever of the more esoteric Perl scalars such
-as code references or glob values at the moment.
+=head2 The undefined value
 
 Undefined values are mapped to the JSON literal "null".
 
@@ -57,11 +58,10 @@ into JSON. The order of the keys is as they are supplied by Perl.
 Arrays are converted to JSON arrays. The order of the array is
 identical to the Perl one.
 
-=head2 Code references
+=head2 Code references and other
 
-Code references throw an error. Please see also
-L<https://github.com/benkasminbullock/json-create/issues/3> this
-discussion.
+A code reference in the input causes the entire return value to be the
+undefined value.
 
 =head1 EXPORTS
 
@@ -87,7 +87,7 @@ wouldn't have to ever use any of the existing JSON modules on CPAN
 ever again. See also L</SEE ALSO>. The exact time I've spent making
 this module is recorded in the file F<timesheet.txt> in the top
 directory of the distribution. At the time of version 0.02_02, I've spent
-7 hours and 17 minutes working on this.
+7 hours and 44 minutes working on this.
 
 =cut
 

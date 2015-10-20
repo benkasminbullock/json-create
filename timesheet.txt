@@ -71,3 +71,12 @@
 2015-10-20 15:29:09
 2015-10-20 16:25:39
 
+# Documentation, version numbers.
+
+2015-10-20 17:24:27
+2015-10-20 17:27:44
+
+# Update Makefile.PL with MIYAGAWA method from App::cpanminus 
+
+2015-10-20 18:00:00
+2015-10-20 18:03:06

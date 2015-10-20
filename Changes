@@ -1,6 +1,6 @@
-0.02_02 2015-10-20
-* Removed prerequisite JSON::Parse (was actually only required for testing).
-* Handle magic and blessed types slightly better (work in progress).
+0.03 2015-10-21
+* JSON::Parse changed from prerequisite to test prerequisite .. and back
+* Handle magic and blessed types slightly better (work in progress)
 
 0.02 2015-10-20
 * Undefined values are now printed as "null"
