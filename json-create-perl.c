@@ -343,20 +343,16 @@ json_create_recursively (json_create_t * jc, SV * input)
     else {
 	SV * r = input;
 	if (SvTYPE (r) == SVt_NULL) {
-	    CALL (add_str (jc, "null"));
-	    return json_create_ok;
+	    ADD ("null");
 	}
 	else if (SvTYPE (r) == SVt_PV) {
 	    CALL (json_create_add_string (jc, r));
-	    return json_create_ok;
 	}
 	else if (SvTYPE (r) == SVt_IV) {
 	    CALL (json_create_add_integer (jc, r));
-	    return json_create_ok;
 	}
 	else if (SvTYPE (r) == SVt_NV) {
 	    CALL (json_create_add_float (jc, r));
-	    return json_create_ok;
 	}
 	else {
 	    if (JCEH) {
@@ -373,9 +369,11 @@ json_create_recursively (json_create_t * jc, SV * input)
 	json_create_status_t status;				\
 	status = x;						\
 	if (status != json_create_ok) {				\
-	    fprintf (stderr,					\
-		     "%s:%d: %s failed with status %d\n",	\
-		     __FILE__, __LINE__, #x, status);		\
+	    if (JCEH) {						\
+		(*JCEH) (__FILE__, __LINE__,			\
+			 "%s failed with status %d\n",		\
+			 #x, status);				\
+	    }							\
 	    /* Free the memory of "output". */			\
 	    if (jc.output) {					\
 		SvREFCNT_dec (jc.output);			\
