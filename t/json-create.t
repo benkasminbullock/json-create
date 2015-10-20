@@ -52,7 +52,36 @@ is ($fnumbers_json, '[0.5,0.25]', "round floating point numbers");
 #my $json_code = create_json ($code);
 #print $json_code;
 
+run (undef, '"null"');
+run ({'a' => undef},'{"a":null}');
+
 done_testing ();
 # Local variables:
 # mode: perl
 # End:
+
+sub run
+{
+    my ($input, $test) = @_;
+    my $output;
+    eval {
+	$output = create_json ($input);
+    };
+    ok (! $@, "no errors on input");
+    ok (valid_json ($output), "output is valid JSON");
+    if (ref $test eq 'CODE') {
+	&{$test} ($input, $output);
+    }
+    elsif (ref $test eq 'Regexp') {
+	like ($input, $test, "input looks as expected");
+    }
+    elsif (! defined $test) {
+	# skip this test
+    }
+    else {
+	# Assume string
+	is ($output, $test, "input is as expected");
+    }
+    return;
+}
+

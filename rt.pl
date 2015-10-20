@@ -21,6 +21,6 @@ for my $file (@ARGV) {
     else {
 	my $out = create_json ($j);
 	assert_valid_json ($out);
-#	print $out;
+	print $out;
     }
 }
