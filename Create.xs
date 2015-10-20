@@ -5,14 +5,9 @@
 
 #include "json-create-perl.c"
 
-typedef json_create_t * JSON__Create;
-
 MODULE=JSON::Create PACKAGE=JSON::Create
 
 PROTOTYPES: DISABLE
-
-BOOT:
-	/* JSON__Create_error_handler = perl_error_handler; */
 
 SV *
 create_json (input)

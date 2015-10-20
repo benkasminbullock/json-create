@@ -1,3 +1,9 @@
+#ifdef __GNUC__
+#define INLINE inline
+#else
+#define INLINE
+#endif /* __GNUC__ */
+
 typedef enum {
     json_create_ok,
     /* Unknown Perl svtype within the structure. */
@@ -63,12 +69,16 @@ typedef struct json_create {
 }
 json_create_t;
 
+/* Everything else in this file is ordered from caller to callee, but
+   because of the recursion, we need to forward-declare
+   json_create_recursively. */
+
 static json_create_status_t
 json_create_recursively (json_create_t * jc, SV * input);
 
 /* Copy the jc buffer into its SV. */
 
-static inline json_create_status_t
+static INLINE json_create_status_t
 json_create_buffer_fill (json_create_t * jc)
 {
     /* There is nothing to put in the output. */
@@ -92,10 +102,9 @@ json_create_buffer_fill (json_create_t * jc)
 
 /* Add one character to the end of jc. */
 
-static inline json_create_status_t
+static INLINE json_create_status_t
 add_char (json_create_t * jc, unsigned char c)
 {
-//    fprintf (stderr, "Adding %c\n", c);
     jc->buffer[jc->length] = c;
     jc->length++;
     if (jc->length >= jc->size) {
@@ -104,7 +113,13 @@ add_char (json_create_t * jc, unsigned char c)
     return json_create_ok;
 }
 
-static inline json_create_status_t
+/* Add a nul-terminated string to "jc", up to the nul byte. This
+   should not be used unless it's strictly necessary, prefer to use
+   "add_str_len" instead. This is not intended to be Unicode-safe, it
+   is only to be used for strings which we know are not Unicode (for
+   example sprintf'd numbers or something). */
+
+static INLINE json_create_status_t
 add_str (json_create_t * jc, const char * s)
 {
     int i;
@@ -116,7 +131,12 @@ add_str (json_create_t * jc, const char * s)
     return json_create_ok;
 }
 
-static inline json_create_status_t
+/* Add a string "s" with length "slen" to "jc". This does not test for
+   nul bytes, but just copies "slen" bytes of the string.  This is not
+   intended to be Unicode-safe, it is only to be used for strings we
+   know are not Unicode. */
+
+static INLINE json_create_status_t
 add_str_len (json_create_t * jc, const char * s, unsigned int slen)
 {
     int i;
@@ -128,9 +148,12 @@ add_str_len (json_create_t * jc, const char * s, unsigned int slen)
     return json_create_ok;
 }
 
+/* "Add a string" macro, this just saves cut and pasting a string and
+   typing "strlen" over and over again. */
+
 #define ADD(x) CALL (add_str_len (jc, x, strlen (x)));
 
-static inline json_create_status_t
+static INLINE json_create_status_t
 add_u (json_create_t * jc, unsigned int u)
 {
     char hex[5];
@@ -143,7 +166,11 @@ add_u (json_create_t * jc, unsigned int u)
     return json_create_ok;
 }
 
-static inline json_create_status_t
+/* Add a string to the buffer with quotes around it and escapes for
+   the escapables. When Unicode verification is added to the module,
+   it will be added here. */
+
+static INLINE json_create_status_t
 json_create_add_key_len (json_create_t * jc, const unsigned char * key, STRLEN keylen)
 {
     int i;
@@ -183,6 +210,8 @@ json_create_add_key_len (json_create_t * jc, const unsigned char * key, STRLEN k
 		CALL (add_char (jc, c));
 	    }
 	}
+	/* Unicode verification switch statements copied from
+	   JSON::Parse will go here. */
     }
     CALL (add_char (jc, '"'));
     return json_create_ok;
@@ -195,10 +224,11 @@ json_create_add_string (json_create_t * jc, SV * input)
     char * istring;
     STRLEN ilength;
     istring = SvPV (input, ilength);
+    /* Backtrace fall through, remember to check the caller's line. */
     return json_create_add_key_len (jc, (unsigned char *) istring, (STRLEN) ilength);
 }
 
-static inline json_create_status_t
+static INLINE json_create_status_t
 json_create_add_integer (json_create_t * jc, SV * sv)
 {
     long int iv;
@@ -206,11 +236,11 @@ json_create_add_integer (json_create_t * jc, SV * sv)
     char ivbuf[0x40];
     iv = SvIV (sv);
     ivlen = snprintf (ivbuf, 0x40, "%ld", iv);
-    CALL (add_str_len (jc, ivbuf, ivlen));
-    return json_create_ok;
+    /* Backtrace fall through, remember to check the caller's line. */
+    return add_str_len (jc, ivbuf, ivlen);
 }
 
-static inline json_create_status_t
+static INLINE json_create_status_t
 json_create_add_float (json_create_t * jc, SV * sv)
 {
     double fv;
@@ -218,14 +248,14 @@ json_create_add_float (json_create_t * jc, SV * sv)
     char fvbuf[0x40];
     fv = SvNV (sv);
     fvlen = snprintf (fvbuf, 0x40, "%g", fv);
-    CALL (add_str_len (jc, fvbuf, fvlen));
-    return json_create_ok;
+    /* Backtrace fall through, remember to check the caller's line. */
+    return add_str_len (jc, fvbuf, fvlen);
 }
 
 /* Add a number which is already stringified. This bypasses snprintf
    and just copies the Perl string straight into the buffer. */
 
-static inline json_create_status_t
+static INLINE json_create_status_t
 json_create_add_stringified (json_create_t * jc, SV *r)
 {
     /* Stringified number. */
@@ -240,7 +270,10 @@ json_create_add_stringified (json_create_t * jc, SV *r)
     return add_str_len (jc, s, (unsigned int) rlen);
 }
 
-static inline json_create_status_t
+/* Given a reference to a hash in "input_hv", recursively process it
+   into JSON. */
+
+static INLINE json_create_status_t
 json_create_add_object (json_create_t * jc, HV * input_hv)
 {
     I32 n_keys;
@@ -252,6 +285,7 @@ json_create_add_object (json_create_t * jc, HV * input_hv)
     CALL (add_char (jc, '{'));
     n_keys = hv_iterinit (input_hv);
     for (i = 0; i < n_keys; i++) {
+	/* Add the comma where necessary. */
 	if (i > 0) {
 	    CALL (add_char (jc, ','));
 	}
@@ -265,7 +299,10 @@ json_create_add_object (json_create_t * jc, HV * input_hv)
     return json_create_ok;
 }
 
-static inline json_create_status_t
+/* Given an array reference in "av", recursively process it into
+   JSON. */
+
+static INLINE json_create_status_t
 json_create_add_array (json_create_t * jc, AV * av)
 {
     I32 n_keys;
@@ -274,7 +311,11 @@ json_create_add_array (json_create_t * jc, AV * av)
 
     CALL (add_char (jc, '['));
     n_keys = av_len (av) + 1;
+    /* This deals correctly with empty arrays, since av_len is -1 if
+       the array is empty, so there is no testing of n_keys before
+       entering the loop. */
     for (i = 0; i < n_keys; i++) {
+	/* Add the comma where necessary. */
 	if (i > 0) {
 	    CALL (add_char (jc, ','));
 	}
@@ -301,7 +342,7 @@ http://grep.cpan.me/?q=SvRX
  
 #define SvRXOK(sv) is_regexp(aTHX_ sv)
  
-static inline int
+static INLINE int
 is_regexp (pTHX_ SV* sv) {
         SV* tmpsv;
          
@@ -325,18 +366,36 @@ is_regexp (pTHX_ SV* sv) {
 
 /* <-- End of Toby Inkster contribution. Thank you. */
 
+#define UNKNOWN_TYPE_FAIL(t)				\
+    if (JCEH) {						\
+	(*JCEH) (__FILE__, __LINE__,			\
+		 "Unknown Perl type %d", t);		\
+    }							\
+    return json_create_unknown_type
+
+/* This is the core routine, it is called recursively as hash values
+   and array values containing array or hash references are
+   handled. */
+
 static json_create_status_t
 json_create_recursively (json_create_t * jc, SV * input)
 {
     if (! SvOK (input)) {
+	/* We were told to add an undefined value, so put the literal
+	   'null' at the end of "jc" then return. */
 	ADD ("null");
 	return json_create_ok;
     }
     if (SvROK (input)) {
+	/* We have a reference, so decide what to do with it. */
 	svtype t;
 	SV * r;
 	r = SvRV (input);
 	t = SvTYPE (r);
+	/* First try a switch for the types which have been in Perl
+	   for a while. We can't add the case of SVt_REGEXP here since
+	   it's not present in some older Perls, so we test for
+	   regexes in the default: case at the bottom. */
 	switch (t) {
 	case SVt_PVAV:
 	    CALL (json_create_add_array (jc, (AV *) r));
@@ -356,22 +415,19 @@ json_create_recursively (json_create_t * jc, SV * input)
 	    break;
 
 	default:
+	    /* Test for regex, possibly using the Toby Inkster code
+	       above. */
 	    if (SvRXOK (r)) {
 		/* Use it as a string. */
 		CALL (json_create_add_string (jc, r));
 	    }
 	    else {
-		/* The SV type of input. */
-		if (JCEH) {
-		    (*JCEH) (__FILE__, __LINE__,
-			     "Unknown Perl type %d",
-			     SvTYPE (r));
-		}
-		return json_create_unknown_type;
+		UNKNOWN_TYPE_FAIL (t);
 	    }
 	}
     }
     else {
+	/* Not a reference, think about what to do. */
 	SV * r = input;
 	svtype t;
 	t = SvTYPE (r);
@@ -396,21 +452,22 @@ json_create_recursively (json_create_t * jc, SV * input)
 
 	case SVt_PVNV:
 	case SVt_PVIV:
+	    /* Experimentally, add these as stringified. This code
+	       path is untested. */
 	    CALL (json_create_add_stringified (jc, r));
 	    break;
 	    
 	default:
-	    fprintf (stderr, "%s: %d: values %d %d\n",
-		     __FILE__, __LINE__, SVt_PVNV, SvTYPE(r));
-	    if (JCEH) {
-		(*JCEH) (__FILE__, __LINE__, "Unknown Perl type %d",
-			 SvTYPE (r));
-	    }
-	    return json_create_unknown_type;
+	    UNKNOWN_TYPE_FAIL(t);
 	}
     }
     return json_create_ok;
 }
+
+/* Master-caller macro. Calls to subsystems from "json_create" cannot
+   be handled using the CALL macro above, because we need to return a
+   non-status value from json_create. If things go wrong somewhere, we
+   return "undef". */
 
 #define FINALCALL(x) {						\
 	json_create_status_t status;				\
@@ -430,17 +487,27 @@ json_create_recursively (json_create_t * jc, SV * input)
 	}							\
     }
 
+/* Master routine, callers should only ever use this. Everything above
+   is only for the sake of "json_create" to use. */
+
 static SV *
 json_create (SV * input)
 {
     json_create_t jc;
 
     jc.length = 0;
+    /* Add a margin of 16 bytes in case some stupid code reads after
+       the end of the buffer. */
     jc.size = BUFSIZE - 0x10;
+    /* Tell json_create_buffer_fill that it needs to allocate an
+       SV. */
     jc.output = 0;
-
+    /* Unleash the dogs. */
     FINALCALL (json_create_recursively (& jc, input));
+    /* Copy the remaining text in jc's buffer into input. */
     FINALCALL (json_create_buffer_fill (& jc));
+    /* We didn't allocate any memory except for the SV, all our memory
+       is on the stack, so there is nothing to free here. */
     return jc.output;
 }
 
