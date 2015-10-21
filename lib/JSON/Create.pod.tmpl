@@ -29,6 +29,17 @@ Convert a Perl hash or array into JSON.
 
 =head1 CONVERSIONS
 
+=head2 Hashes
+
+Associative arrays are converted to JSON objects. The keys are written
+into JSON as strings, with any control characters escaped. The order
+of the keys is as they are supplied by Perl.
+
+=head2 Arrays
+
+Arrays are converted to JSON arrays. The order of the array is
+identical to the Perl one.
+
 =head2 Scalars
 
 Scalars are converted to strings, JSON integers or JSON floats
@@ -38,25 +49,26 @@ Bytes of value less than 0x20 are converted into the appropriate JSON
 escapes. Currently, no escaping or checking is done for Unicode
 bytes.
 
+=head3 The undefined value
+
+Undefined values are mapped to the JSON literal "null".
+
+=head3 Booleans
+
+There is currently no way to produce booleans (JSON "true" and "false"
+literals).
+
+=head3 Unicode escapes
+
+There is currently no facility to produce Unicode escapes, except for
+control characters (bytes less than 0x20 in value which are not
+whitespace or \b).
+
 =head2 Regexes
 
 If the scalar contains a regex then JSON::Create lets Perl convert the
 regex to a string then adds that. The output depends on the Perl
 version.
-
-=head2 The undefined value
-
-Undefined values are mapped to the JSON literal "null".
-
-=head2 Hashes
-
-Associative arrays are converted to JSON objects. The keys are escaped
-into JSON. The order of the keys is as they are supplied by Perl.
-
-=head2 Arrays
-
-Arrays are converted to JSON arrays. The order of the array is
-identical to the Perl one.
 
 =head2 Code references and other
 
@@ -87,7 +99,7 @@ wouldn't have to ever use any of the existing JSON modules on CPAN
 ever again. See also L</SEE ALSO>. The exact time I've spent making
 this module is recorded in the file F<timesheet.txt> in the top
 directory of the distribution. At the time of version 0.02_02, I've spent
-7 hours and 44 minutes working on this.
+8 hours and 50 minutes working on this.
 
 =cut
 

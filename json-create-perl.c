@@ -9,7 +9,8 @@ typedef enum {
     /* Unknown Perl svtype within the structure. */
     json_create_unknown_type,
     json_create_bad_char,
-    json_create_unicode_too_big,
+    /* An error from the unicode.c library. */
+    json_create_unicode_error,
 }
 json_create_status_t;
 
@@ -160,19 +161,42 @@ add_str_len (json_create_t * jc, const char * s, unsigned int slen)
 
 #define ADD(x) CALL (add_str_len (jc, x, strlen (x)));
 
-/* Add a "\u3000". */
+
+static INLINE json_create_status_t
+add_one_u (json_create_t * jc, unsigned int u)
+{
+    char hex[5];
+    ADD ("\\u");
+    snprintf (hex, 4, "%04u", u);
+    CALL (add_str_len (jc, hex, 4));
+    return json_create_ok;
+}
+
+/* Add a "\u3000" or surrogate pair if necessary. */
 
 static INLINE json_create_status_t
 add_u (json_create_t * jc, unsigned int u)
 {
-    char hex[5];
-    ADD ("\\u");
     if (u > 0xffff) {
-	return json_create_unicode_too_big;
+	unsigned hi;
+	unsigned lo;
+	int status = unicode_to_surrogates (u, & hi, & lo);
+	if (status != UNICODE_OK) {
+	    if (JCEH) {
+		(*JCEH) (__FILE__, __LINE__,
+			 "Error %d making surrogate pairs from %X",
+			 status, u);
+	    }
+	    return json_create_unicode_error;
+	}
+	CALL (add_one_u (jc, hi));
+	/* Backtrace fallthrough. */
+	return add_one_u (jc, lo);
     }
-    snprintf (hex, 4, "%04u", u);
-    CALL (add_str_len (jc, hex, 4));
-    return json_create_ok;
+    else {
+	/* Backtrace fallthrough. */
+	return add_one_u (jc, u);
+    }
 }
 
 /* Add a string to the buffer with quotes around it and escapes for

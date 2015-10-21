@@ -3,6 +3,7 @@
 #include "XSUB.h"
 #include "ppport.h"
 
+#include "unicode.h"
 #include "json-create-perl.c"
 
 MODULE=JSON::Create PACKAGE=JSON::Create

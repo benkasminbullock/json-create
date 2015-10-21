@@ -45,7 +45,7 @@ my %WriteMakefileArgs = (
         },
     },
     MIN_PERL_VERSION => '5.006001',
-    OBJECT => 'Create.o',
+    OBJECT => 'Create.o unicode.o',
 );
 
 my %FallbackPrereqs = (

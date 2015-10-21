@@ -76,7 +76,17 @@
 2015-10-20 17:24:27
 2015-10-20 17:27:44
 
-# Update Makefile.PL with MIYAGAWA method from App::cpanminus 
+# Update Makefile.PL with Dist::Zilla method, copied from App::cpanminus 
 
 2015-10-20 18:00:00
 2015-10-20 18:03:06
+
+# Estimate of time taken to add benchmark
+
+2015-10-21 13:07:23
+2015-10-21 13:17:35
+
+# Write some more documentation, add surrogate pair handling
+
+2015-10-21 16:07:00
+2015-10-21 16:59:14
