@@ -60,8 +60,11 @@ static int (* json_create_error_handler) (const char * file, int line_number, co
     }
 
 #define BUFSIZE 0x4000
-/* Add a margin of 16 bytes in case some stupid code reads after the
-   end of the buffer. */
+
+/* MARGIN is the size of the "spillover" area where we can print
+   numbers or Unicode UTF-8 whole characters (runes) into the buffer
+   without having to check the printed length after each byte. */
+
 #define MARGIN 0x40
 
 typedef struct json_create {
@@ -153,10 +156,24 @@ static INLINE json_create_status_t
 add_str_len (json_create_t * jc, const char * s, unsigned int slen)
 {
     int i;
-    for (i = 0; i < slen; i++) {
-	unsigned char c;
-	c = (unsigned char) s[i];
-	CALL (add_char (jc, c));
+    /* Hopefully, the compiler optimizes the following "if" statement
+       away to a true value for almost all cases. */
+    if (slen < MARGIN) {
+	/* Gonna take you right into the DANGER ZONE. */
+	for (i = 0; i < slen; i++) {
+	    /* DANGER ZONE! */
+	    jc->buffer[jc->length + i] = s[i];
+	}
+	/* Phew. We survived the DANGER ZONE. */
+	jc->length += slen;
+	CHECKLENGTH;
+    }
+    else {
+	/* A very long string which may overflow the buffer, so use
+	   checking routines. */
+	for (i = 0; i < slen; i++) {
+	    CALL (add_char (jc, (unsigned char) s[i]));
+	}
     }
     return json_create_ok;
 }
