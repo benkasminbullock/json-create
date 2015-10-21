@@ -58,4 +58,7 @@ unless ( eval { ExtUtils::MakeMaker->VERSION(6.63_03) } ) {
     $WriteMakefileArgs{PREREQ_PM} = \%FallbackPrereqs;
 }
  
-WriteMakefile(%WriteMakefileArgs);
+WriteMakefile(
+    %WriteMakefileArgs,
+#    OPTIMIZE => '-g -Wall -O -S',
+);

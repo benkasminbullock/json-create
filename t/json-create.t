@@ -4,7 +4,7 @@ use warnings;
 use strict;
 use Test::More;
 use JSON::Create 'create_json';
-use JSON::Parse 'valid_json';
+use JSON::Parse qw/valid_json parse_json/;
 my %hash = ('a' => 'b');
 my $json_hash = create_json (\%hash);
 is ($json_hash, '{"a":"b"}', "json simple hash OK");
@@ -47,6 +47,14 @@ my $fnumbers = [0.5,0.25];
 my $fnumbers_json = create_json ($fnumbers);
 is ($fnumbers_json, '[0.5,0.25]', "round floating point numbers");
 
+my $negnumbers = [-1,2,-3,4,-5,6];
+my $negnumbers_json = create_json ($negnumbers);
+is ($negnumbers_json, '[-1,2,-3,4,-5,6]', "negative numbers OK");
+
+my $bignegnumbers = [-1000000,2000000,-300000000];
+my $bigneg_json = create_json ($bignegnumbers);
+is ($bigneg_json, '[-1000000,2000000,-300000000]', "big negative numbers OK");
+
 #my $code = sub {print "She's often inclined to borrow somebody's dreams till tomorrow"};
 #print $code;
 #my $json_code = create_json ($code);
@@ -80,6 +88,39 @@ my $babibubebo = Ba::Bi::Bu::Be::Bo->new ();
 my $zoffixznet = {"babibubebo" => $babibubebo};
 run ($zoffixznet, qr/\"ライオン\"/);
 
+# Hash to numbers.
+
+my $h2n = {
+    a => 1,
+    b => 2,
+    c => 4,
+    d => 8,
+    e => 16,
+    f => 32,
+    g => 64,
+    h => 128,
+    i => 256,
+    j => 512,
+    k => 1024,
+    l => 2048,
+    m => 4096,
+    n => 8192,
+    o => 16384,
+    p => 32768,
+    q => 65536,
+    r => 131_072,
+    s => 262_144,
+    t => 524_288,
+    u => 1_048_576,
+    v => 2_097_152,
+    w => 4_194_304,
+    x => 8_388_608,
+    y => 16_777_216,
+    z => 33_554_432,
+};
+
+run ($h2n, \&alnums);
+
 done_testing ();
 exit;
 # Local variables:
@@ -112,3 +153,13 @@ sub run
     return;
 }
 
+sub alnums
+{
+    my ($input, $output) = @_;
+    my $stuff = parse_json ($output);
+    my $num = 1;
+    for my $letter ('a'..'z') {
+	ok ($stuff->{$letter} == $num);
+	$num *= 2;
+    }
+}

@@ -11,6 +11,8 @@ typedef enum {
     json_create_bad_char,
     /* An error from the unicode.c library. */
     json_create_unicode_error,
+    /* A printed number turned out to be longer than MARGIN bytes. */
+    json_create_number_too_long,
 }
 json_create_status_t;
 
@@ -60,7 +62,7 @@ static int (* json_create_error_handler) (const char * file, int line_number, co
 #define BUFSIZE 0x4000
 /* Add a margin of 16 bytes in case some stupid code reads after the
    end of the buffer. */
-#define MARGIN 0x10
+#define MARGIN 0x40
 
 typedef struct json_create {
     /* The length of the input string. */
@@ -106,6 +108,12 @@ json_create_buffer_fill (json_create_t * jc)
     return json_create_ok;
 }
 
+#define CHECKLENGTH				\
+    if (jc->length >= BUFSIZE - MARGIN) {	\
+	CALL (json_create_buffer_fill (jc));	\
+    }
+
+
 /* Add one character to the end of jc. */
 
 static INLINE json_create_status_t
@@ -114,9 +122,7 @@ add_char (json_create_t * jc, unsigned char c)
     jc->buffer[jc->length] = c;
     jc->length++;
     /* The size we have to use before we write the buffer out. */
-    if (jc->length >= BUFSIZE - MARGIN) {
-	CALL (json_create_buffer_fill (jc));
-    }
+    CHECKLENGTH;
     return json_create_ok;
 }
 
@@ -207,7 +213,6 @@ static INLINE json_create_status_t
 json_create_add_key_len (json_create_t * jc, const unsigned char * key, STRLEN keylen)
 {
     int i;
-    char * istring;
     CALL (add_char (jc, '"'));
     for (i = 0; i < keylen; i++) {
 	unsigned char c;
@@ -253,7 +258,6 @@ json_create_add_key_len (json_create_t * jc, const unsigned char * key, STRLEN k
 static INLINE json_create_status_t
 json_create_add_string (json_create_t * jc, SV * input)
 {
-    int i;
     char * istring;
     STRLEN ilength;
     istring = SvPV (input, ilength);
@@ -265,12 +269,37 @@ static INLINE json_create_status_t
 json_create_add_integer (json_create_t * jc, SV * sv)
 {
     long int iv;
-    STRLEN ivlen;
-    char ivbuf[0x40];
+    int ivlen;
     iv = SvIV (sv);
-    ivlen = snprintf (ivbuf, 0x40, "%ld", iv);
-    /* Backtrace fall through, remember to check the caller's line. */
-    return add_str_len (jc, ivbuf, ivlen);
+    if (iv < 0) {
+	CALL (add_char (jc, '-'));
+	iv = -iv;
+    }
+    if (iv < 10) {
+	CALL (add_char (jc, iv + '0'));
+    }
+    else if (iv < 100) {
+	char ivc[2];
+	ivc[0] = iv / 10 + '0';
+	ivc[1] = iv % 10 + '0';
+	CALL (add_str_len (jc, ivc, 2));
+    }
+    else if (iv < 1000) {
+	char ivc[3];
+	ivc[0] = iv / 100 + '0';
+	ivc[1] = (iv / 10) % 10 + '0';
+	ivc[2] = iv % 10 + '0';
+	CALL (add_str_len (jc, ivc, 3));
+    }
+    else {
+	ivlen = snprintf ((char *) jc->buffer + jc->length, MARGIN, "%ld", iv);
+	if (ivlen >= MARGIN) {
+	    return json_create_number_too_long;
+	}
+	jc->length += ivlen;
+	CHECKLENGTH;
+    }
+    return json_create_ok;
 }
 
 static INLINE json_create_status_t
@@ -278,11 +307,15 @@ json_create_add_float (json_create_t * jc, SV * sv)
 {
     double fv;
     STRLEN fvlen;
-    char fvbuf[0x40];
+    char fvbuf[MARGIN];
     fv = SvNV (sv);
-    fvlen = snprintf (fvbuf, 0x40, "%g", fv);
-    /* Backtrace fall through, remember to check the caller's line. */
-    return add_str_len (jc, fvbuf, fvlen);
+    fvlen = snprintf ((char *) jc->buffer + jc->length, MARGIN, "%g", fv);
+    if (fvlen >= MARGIN) {
+	return json_create_number_too_long;
+    }
+    jc->length += fvlen;
+    CHECKLENGTH;
+    return json_create_ok;
 }
 
 /* Add a number which is already stringified. This bypasses snprintf

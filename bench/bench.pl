@@ -1,4 +1,7 @@
 #!/home/ben/software/install/bin/perl
+
+# Benchmark JSON::Create against JSON::XS.
+
 use warnings;
 use strict;
 use utf8;
@@ -33,8 +36,49 @@ cmpthese (
 	    create_json ($stuff);
 	},
 	'JX' => sub {
-	    my $json = JSON::XS->new ();
-	    $json->encode ($stuff);
+	    encode_json ($stuff);
 	},
     },    
 );
+
+my $h2n = {
+    a => 1,
+    b => 2,
+    c => 4,
+    d => 8,
+    e => 16,
+    f => 32,
+    g => 64,
+    h => 128,
+    i => 256,
+    j => 512,
+    k => 1024,
+    l => 2048,
+    m => 4096,
+    n => 8192,
+    o => 16384,
+    p => 32768,
+    q => 65536,
+    r => 131_072,
+    s => 262_144,
+    t => 524_288,
+    u => 1_048_576,
+    v => 2_097_152,
+    w => 4_194_304,
+    x => 8_388_608,
+    y => 16_777_216,
+    z => 33_554_432,
+};
+
+cmpthese (
+    $count,
+    {
+	'JC' => sub {
+	    my $x = JSON::Create::create_json ($h2n);
+	},
+	'JX' => sub {
+	    my $x = JSON::XS::encode_json ($h2n);
+	},
+    },    
+);
+
