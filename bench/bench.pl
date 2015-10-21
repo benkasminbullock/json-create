@@ -10,6 +10,7 @@ use lib '/home/ben/projects/json-create/blib/lib';
 use lib '/home/ben/projects/json-create/blib/arch';
 use JSON::Create 'create_json';
 use JSON::XS;
+use Cpanel::JSON::XS;
 
 use FindBin '$Bin';
 my $stuff = {
@@ -27,16 +28,19 @@ my $stuff = {
     side => "Captain Planet!",
 };
 
-my $count = 1000000;
+my $count = 2000000;
 
 cmpthese (
     $count,
     {
 	'JC' => sub {
-	    create_json ($stuff);
+	    my $x = JSON::Create::create_json ($stuff);
 	},
 	'JX' => sub {
-	    encode_json ($stuff);
+	    my $x = JSON::XS::encode_json ($stuff);
+	},
+	'CJX' => sub {
+	    my $x = Cpanel::JSON::XS::encode_json ($stuff);
 	},
     },    
 );
@@ -78,6 +82,9 @@ cmpthese (
 	},
 	'JX' => sub {
 	    my $x = JSON::XS::encode_json ($h2n);
+	},
+	'CJX' => sub {
+	    my $x = Cpanel::JSON::XS::encode_json ($h2n);
 	},
     },    
 );

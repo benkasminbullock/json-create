@@ -1,3 +1,6 @@
+0.03_01 2015-10-22
+* Souped up
+
 0.03 2015-10-21
 * JSON::Parse changed from prerequisite to test prerequisite .. and back
 * Handle magic and blessed types slightly better (work in progress)

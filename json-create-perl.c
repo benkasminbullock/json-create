@@ -76,6 +76,19 @@ typedef struct json_create {
 }
 json_create_t;
 
+/* Check the length of the buffer, and if we don't have more than
+   MARGIN bytes left to write into, then we put "jc->buffer" into the
+   Perl scalar "jc->output" via "json_create_buffer_fill". We always
+   want to be at least MARGIN bytes from the end of "jc->buffer" after
+   every write operation so that we always have room to put a number
+   or a UTF-8 "rune" in the buffer without checking the length
+   excessively. */
+
+#define CHECKLENGTH				\
+    if (jc->length >= BUFSIZE - MARGIN) {	\
+	CALL (json_create_buffer_fill (jc));	\
+    }
+
 /* Everything else in this file is ordered from callee at the top to
    caller at the bottom, but because of the recursion as we look at
    JSON values within arrays or hashes, we need to forward-declare
@@ -110,12 +123,6 @@ json_create_buffer_fill (json_create_t * jc)
     jc->length = 0;
     return json_create_ok;
 }
-
-#define CHECKLENGTH				\
-    if (jc->length >= BUFSIZE - MARGIN) {	\
-	CALL (json_create_buffer_fill (jc));	\
-    }
-
 
 /* Add one character to the end of jc. */
 
@@ -288,6 +295,10 @@ json_create_add_integer (json_create_t * jc, SV * sv)
     long int iv;
     int ivlen;
     iv = SvIV (sv);
+
+    /* Souped-up integer printing for small integers. The following is
+       all just souped up versions of snprintf ("%d", iv);. */
+
     if (iv < 0) {
 	CALL (add_char (jc, '-'));
 	iv = -iv;
@@ -308,7 +319,26 @@ json_create_add_integer (json_create_t * jc, SV * sv)
 	ivc[2] = iv % 10 + '0';
 	CALL (add_str_len (jc, ivc, 3));
     }
+    else if (iv < 10000) {
+	char ivc[4];
+	ivc[0] = iv / 1000 + '0';
+	ivc[1] = (iv / 100) % 10 + '0';
+	ivc[2] = (iv / 10) % 10 + '0';
+	ivc[3] = iv % 10 + '0';
+	CALL (add_str_len (jc, ivc, 4));
+    }
+    else if (iv < 100000) {
+	char ivc[5];
+	ivc[0] = iv / 10000 + '0';
+	ivc[1] = (iv / 1000) % 10 + '0';
+	ivc[2] = (iv / 100) % 10 + '0';
+	ivc[3] = (iv / 10) % 10 + '0';
+	ivc[4] = iv % 10 + '0';
+	CALL (add_str_len (jc, ivc, 5));
+    }
     else {
+	/* The number is 100,000 or more, so we're just going to print
+	   it into "jc->buffer" with snprintf. */
 	ivlen = snprintf ((char *) jc->buffer + jc->length, MARGIN, "%ld", iv);
 	if (ivlen >= MARGIN) {
 	    return json_create_number_too_long;

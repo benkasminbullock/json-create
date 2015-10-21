@@ -87,6 +87,14 @@ L<JSON::Parse>. Please see that module's documentation for links to
 the JSON standard itself and a summary of the ever-growing list of
 JSON modules on CPAN.
 
+=head1 PERFORMANCE
+
+This module is currently at an early stage of development, so
+performance is not a key issue until it's shown to be performing
+correctly. However, there is a benchmarking script in
+F<bench/bench.pl> which compares the performance of the module with
+L<JSON::XS> and L<Cpanel::JSON::XS>.
+
 =head1 ACKNOWLEDGEMENTS
 
 Zoffix Znet (ZOFFIX) reported an important bug with undefined values,
@@ -98,8 +106,8 @@ I started making this module so that, with this and JSON::Parse, I
 wouldn't have to ever use any of the existing JSON modules on CPAN
 ever again. See also L</SEE ALSO>. The exact time I've spent making
 this module is recorded in the file F<timesheet.txt> in the top
-directory of the distribution. At the time of version 0.02_02, I've spent
-8 hours and 50 minutes working on this.
+directory of the distribution. At the time of version 0.03_01, I've spent
+11 hours and 4 minutes working on this.
 
 =cut
 
