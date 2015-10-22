@@ -1,6 +1,6 @@
-0.03_02 2015-10-22
+0.04 2015-10-22
 * Performance increases for output of strings and integers
-* Unicode handling added
+* Partial Unicode handling added
 
 0.03 2015-10-21
 * JSON::Parse changed from prerequisite to test prerequisite .. and back
