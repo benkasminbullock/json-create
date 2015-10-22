@@ -28,7 +28,9 @@ my $stuff = {
     side => "Captain Planet!",
 };
 
-my $count = 2000000;
+my $count = 400000;
+
+print "Comparing hash of ASCII strings...\n";
 
 cmpthese (
     $count,
@@ -74,6 +76,8 @@ my $h2n = {
     z => 33_554_432,
 };
 
+print "Comparing hash of integers...\n";
+
 cmpthese (
     $count,
     {
@@ -85,6 +89,37 @@ cmpthese (
 	},
 	'CJX' => sub {
 	    my $x = Cpanel::JSON::XS::encode_json ($h2n);
+	},
+    },    
+);
+
+use utf8;
+
+my %unihash = (
+    'う' => '雨',
+    'あ' => '亜',
+    'い' => '井',
+    'え' => '絵',
+    'お' => '尾',
+    'ば' => [
+	qw/場 馬 羽 葉 刃/
+    ],
+);
+
+
+print "Comparing hash of Unicode strings...\n";
+
+cmpthese (
+    $count,
+    {
+	'JC' => sub {
+	    my $x = JSON::Create::create_json (\%unihash);
+	},
+	'JX' => sub {
+	    my $x = JSON::XS::encode_json (\%unihash);
+	},
+	'CJX' => sub {
+	    my $x = Cpanel::JSON::XS::encode_json (\%unihash);
 	},
     },    
 );

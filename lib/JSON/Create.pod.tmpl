@@ -64,6 +64,16 @@ There is currently no facility to produce Unicode escapes, except for
 control characters (bytes less than 0x20 in value which are not
 whitespace or \b).
 
+=head3 Unicode
+
+If any part of the input object is marked as "utf8" (multibyte
+characters), every non-ASCII string in the input object needs to be
+marked as such, otherwise the module prints a warning and returns an
+undefined value. If every part of the input is not marked as "utf8",
+this does not happen, but there is also currently no validation of the
+output as being in Unicode, so binary strings can pass through without
+correction. See also L</BUGS>.
+
 =head2 Regexes
 
 If the scalar contains a regex then JSON::Create lets Perl convert the
@@ -87,18 +97,23 @@ L<JSON::Parse>. Please see that module's documentation for links to
 the JSON standard itself and a summary of the ever-growing list of
 JSON modules on CPAN.
 
+=head1 BUGS
+
+JSON is required to be in Unicode, but it's possible to pass
+non-Unicode strings through this module by switching off the Perl
+UTF-8 flag everywhere, since unmarked binary bytes are currently not
+validated independent of Perl's validation, which does not apply to
+unmarked strings.
+
 =head1 PERFORMANCE
 
-This module is currently at an early stage of development, so
-performance is not a key issue until it's shown to be performing
-correctly. However, there is a benchmarking script in
+This module is currently at an early stage of development, so speed is
+not a key issue until the module is demonstrably producing correct
+outputs.
+
+However, due to user interest, there is a benchmarking script in
 F<bench/bench.pl> which compares the performance of the module with
 L<JSON::XS> and L<Cpanel::JSON::XS>.
-
-=head1 ACKNOWLEDGEMENTS
-
-Zoffix Znet (ZOFFIX) reported an important bug with undefined values,
-and various other issues.
 
 =head1 HISTORY
 
@@ -106,8 +121,8 @@ I started making this module so that, with this and JSON::Parse, I
 wouldn't have to ever use any of the existing JSON modules on CPAN
 ever again. See also L</SEE ALSO>. The exact time I've spent making
 this module is recorded in the file F<timesheet.txt> in the top
-directory of the distribution. At the time of version 0.03_01, I've spent
-11 hours and 4 minutes working on this.
+directory of the distribution. At the time of version 0.03_02, I've
+spent 12 hours and 30 minutes working on this.
 
 =cut
 

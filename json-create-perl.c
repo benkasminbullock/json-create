@@ -73,6 +73,12 @@ typedef struct json_create {
     unsigned char buffer[BUFSIZE];
     /* Place to write the buffer to. */
     SV * output;
+    /* Do any of the SVs have a Unicode flag? */
+    unsigned int unicode : 1;
+    /* Does the SV we're currently looking at have a Unicode flag? */
+    unsigned int unicode_now : 1;
+    /* Did we see non-Unicode and non-ASCII bytes? */
+    unsigned int non_unicode : 1;
 }
 json_create_t;
 
@@ -197,6 +203,9 @@ add_one_u (json_create_t * jc, unsigned int u)
 {
     char hex[5];
     ADD ("\\u");
+    /* In the case that we want to Unicode-escape everything, this
+       would be a good place to soup-up. The below code is
+       inefficient. */
     snprintf (hex, 4, "%04u", u);
     CALL (add_str_len (jc, hex, 4));
     return json_create_ok;
@@ -258,10 +267,12 @@ json_create_add_key_len (json_create_t * jc, const unsigned char * key, STRLEN k
 		ADD ("\\f");
 	    }
 	    else {
-		CALL (add_u (jc, c));
+		/* We know c is less than 0x10000, so we can use
+		   "add_one_u" not "add_u" here. */
+		CALL (add_one_u (jc, (unsigned int) c));
 	    }
 	}
-	else {
+	else if (c < 0x80) {
 	    if (c == '"') {
 		ADD ("\\\"");
 	    }
@@ -271,6 +282,12 @@ json_create_add_key_len (json_create_t * jc, const unsigned char * key, STRLEN k
 	    else {
 		CALL (add_char (jc, c));
 	    }
+	}
+	else {
+	    if (! jc->unicode_now) {
+		jc->non_unicode = 1;
+	    }
+	    CALL (add_char (jc, c));
 	}
 	/* Unicode verification switch statements copied from
 	   JSON::Parse will go here. */
@@ -284,9 +301,27 @@ json_create_add_string (json_create_t * jc, SV * input)
 {
     char * istring;
     STRLEN ilength;
+    /*
+      "jc->unicode_now" is true (equals 1) if Perl says that "input"
+      contains a "SvUTF8" scalar, and false (equals 0) if Perl does
+      not say that "input" contains a "SvUTF8" scalar.
+
+      "jc->unicode" is true if Perl says that anything in the whole of
+      the input to "json_create" is a "SvUTF8" scalar.
+    */
+    jc->unicode_now = 0;
     istring = SvPV (input, ilength);
+    if (SvUTF8 (input)) {
+	/* We have to force everything in the whole output to
+	   Unicode. */
+	jc->unicode = 1;
+	/* Flag that this string is supposed to be Unicode to the
+	   upstream. */
+	jc->unicode_now = 1;
+    }
     /* Backtrace fall through, remember to check the caller's line. */
-    return json_create_add_key_len (jc, (unsigned char *) istring, (STRLEN) ilength);
+    return json_create_add_key_len (jc, (unsigned char *) istring,
+				    (STRLEN) ilength);
 }
 
 static INLINE json_create_status_t
@@ -405,8 +440,18 @@ json_create_add_object (json_create_t * jc, HV * input_hv)
     CALL (add_char (jc, '{'));
     n_keys = hv_iterinit (input_hv);
     for (i = 0; i < n_keys; i++) {
+	HE * he;
 	COMMA;
-	value = hv_iternextsv (input_hv, & key, & keylen);
+	/* We have to do all this rigamarole because hv_iternextsv
+	   doesn't tell us whether the key is "SvUTF8" or not. */
+	he = hv_iternext (input_hv);
+	if (HeUTF8 (he)) {
+	    jc->unicode = 1;
+	    jc->unicode_now = 1;
+	}
+	key = hv_iterkey (he, & keylen);
+	value = hv_iterval (input_hv, he);
+	/* Back to the future. */
 	CALL (json_create_add_key_len (jc, (const unsigned char *) key,
 				       (STRLEN) keylen));
 	CALL (add_char (jc, ':'));
@@ -613,6 +658,10 @@ json_create (SV * input)
     /* Tell json_create_buffer_fill that it needs to allocate an
        SV. */
     jc.output = 0;
+    /* Not Unicode. */
+    jc.unicode = 0;
+    /* So far we have not seen any non-Unicode bytes over 0x80. */
+    jc.non_unicode = 0;
 
     /* "jc.buffer" is dirty here, we have not initialized it, we are
        just writing to uninitialized stack memory. "jc.length" is the
@@ -622,6 +671,25 @@ json_create (SV * input)
     FINALCALL (json_create_recursively (& jc, input));
     /* Copy the remaining text in jc's buffer into input. */
     FINALCALL (json_create_buffer_fill (& jc));
+
+    /*
+      At least one of the SVs was Unicoded, so switch on Unicode here.
+
+      We also checked that there was nothing with a non-ASCII byte in
+      an SV not marked as Unicode, so we are now going to trust that
+      the user did not send insane inputs. If there was something with
+      a non-ASCII byte not marked as Unicode, we're going to just
+      refuse to encode it.
+    */
+
+    if (jc.unicode) {
+	if (jc.non_unicode) {
+	    warn ("Mixed multibyte and binary inputs, refusing to encode to JSON");
+	    SvREFCNT_dec (jc.output);
+	    return & PL_sv_undef;
+	}
+	SvUTF8_on (jc.output);
+    }
     /* We didn't allocate any memory except for the SV, all our memory
        is on the stack, so there is nothing to free here. */
     return jc.output;
