@@ -8,7 +8,6 @@ typedef enum {
     json_create_ok,
     /* Unknown Perl svtype within the structure. */
     json_create_unknown_type,
-    json_create_bad_char,
     /* An error from the unicode.c library. */
     json_create_unicode_error,
     /* A printed number turned out to be longer than MARGIN bytes. */
@@ -441,6 +440,9 @@ json_create_add_object (json_create_t * jc, HV * input_hv)
     n_keys = hv_iterinit (input_hv);
     for (i = 0; i < n_keys; i++) {
 	HE * he;
+	/* The key is not unicode unless Perl tells us it's
+	   unicode. */
+	jc->unicode_now = 0;
 	COMMA;
 	/* We have to do all this rigamarole because hv_iternextsv
 	   doesn't tell us whether the key is "SvUTF8" or not. */
