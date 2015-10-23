@@ -505,12 +505,28 @@ json_create_add_float (json_create_t * jc, SV * sv)
     double fv;
     STRLEN fvlen;
     fv = SvNV (sv);
-    fvlen = snprintf ((char *) jc->buffer + jc->length, MARGIN, "%g", fv);
-    if (fvlen >= MARGIN) {
-	return json_create_number_too_long;
+    if (isfinite (fv)) {
+	/* Soup this up. */
+	fvlen = snprintf ((char *) jc->buffer + jc->length, MARGIN, "%g", fv);
+	if (fvlen >= MARGIN) {
+	    return json_create_number_too_long;
+	}
+	jc->length += fvlen;
+	CHECKLENGTH;
     }
-    jc->length += fvlen;
-    CHECKLENGTH;
+    else {
+	if (isnan (fv)) {
+	    ADD("\"nan\"");
+	}
+	else if (isinf (fv)) {
+	    if (fv < 0.0) {
+		ADD("\"-inf\"");
+	    }
+	    else {
+		ADD("\"inf\"");
+	    }
+	}
+    }
     return json_create_ok;
 }
 
