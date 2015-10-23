@@ -1,3 +1,16 @@
+/* 
+   This is the main part of JSON::Create.
+
+   It's kept in a separate file but #included into the main file,
+   Create.xs.
+
+   MEMORY MANAGEMENT:
+
+   There is no memory allocation or freeing in this file except via
+   newSVpvn and SvREFCNT_dec. Freeing of the SV returned at the end of
+   json_create is left to Perl.
+*/
+
 #ifdef __GNUC__
 #define INLINE inline
 #else
@@ -323,63 +336,90 @@ json_create_add_string (json_create_t * jc, SV * input)
 				    (STRLEN) ilength);
 }
 
+/* Extract the remainder of x when divided by ten and then turn it
+   into the equivalent ASCII digit. '0' in ASCII is 0x30, and (x)%10
+   is guaranteed not to have any of the high bits set. */
+
+#define DIGIT(x) (((x)%10)|0x30)
+
 static INLINE json_create_status_t
 json_create_add_integer (json_create_t * jc, SV * sv)
 {
     long int iv;
     int ivlen;
+    char * spillover;
+
     iv = SvIV (sv);
+    ivlen = 0;
+
+    /* Pointer arithmetic. */
+
+    spillover = ((char *) jc->buffer) + jc->length;
 
     /* Souped-up integer printing for small integers. The following is
        all just souped up versions of snprintf ("%d", iv);. */
 
     if (iv < 0) {
-	CALL (add_char (jc, '-'));
+	spillover[ivlen] = '-';
+	ivlen++;
 	iv = -iv;
     }
     if (iv < 10) {
-	CALL (add_char (jc, iv + '0'));
+	spillover[ivlen] = DIGIT (iv);
+	ivlen++;
     }
     else if (iv < 100) {
-	char ivc[2];
-	ivc[0] = iv / 10 + '0';
-	ivc[1] = iv % 10 + '0';
-	CALL (add_str_len (jc, ivc, 2));
+	spillover[ivlen] = DIGIT (iv/10);
+	ivlen++;
+	spillover[ivlen] = DIGIT (iv);
+	ivlen++;
     }
     else if (iv < 1000) {
-	char ivc[3];
-	ivc[0] = iv / 100 + '0';
-	ivc[1] = (iv / 10) % 10 + '0';
-	ivc[2] = iv % 10 + '0';
-	CALL (add_str_len (jc, ivc, 3));
+	spillover[ivlen] = DIGIT (iv/100);
+	ivlen++;
+	spillover[ivlen] = DIGIT (iv/10);
+	ivlen++;
+	spillover[ivlen] = DIGIT (iv);
+	ivlen++;
     }
     else if (iv < 10000) {
-	char ivc[4];
-	ivc[0] = iv / 1000 + '0';
-	ivc[1] = (iv / 100) % 10 + '0';
-	ivc[2] = (iv / 10) % 10 + '0';
-	ivc[3] = iv % 10 + '0';
-	CALL (add_str_len (jc, ivc, 4));
+	spillover[ivlen] = DIGIT (iv/1000);
+	ivlen++;
+	spillover[ivlen] = DIGIT (iv/100);
+	ivlen++;
+	spillover[ivlen] = DIGIT (iv/10);
+	ivlen++;
+	spillover[ivlen] = DIGIT (iv);
+	ivlen++;
     }
     else if (iv < 100000) {
-	char ivc[5];
-	ivc[0] = iv / 10000 + '0';
-	ivc[1] = (iv / 1000) % 10 + '0';
-	ivc[2] = (iv / 100) % 10 + '0';
-	ivc[3] = (iv / 10) % 10 + '0';
-	ivc[4] = iv % 10 + '0';
-	CALL (add_str_len (jc, ivc, 5));
+	spillover[ivlen] = DIGIT (iv/10000);
+	ivlen++;
+	spillover[ivlen] = DIGIT (iv/1000);
+	ivlen++;
+	spillover[ivlen] = DIGIT (iv/100);
+	ivlen++;
+	spillover[ivlen] = DIGIT (iv/10);
+	ivlen++;
+	spillover[ivlen] = DIGIT (iv);
+	ivlen++;
     }
     else {
 	/* The number is 100,000 or more, so we're just going to print
 	   it into "jc->buffer" with snprintf. */
-	ivlen = snprintf ((char *) jc->buffer + jc->length, MARGIN, "%ld", iv);
+	ivlen += snprintf (spillover + ivlen, MARGIN - ivlen, "%ld", iv);
 	if (ivlen >= MARGIN) {
+	    if (JCEH) {
+		(*JCEH) (__FILE__, __LINE__,
+			 "A printed integer number %ld was "
+			 "longer than MARGIN=%d bytes",
+			 SvIV (sv), MARGIN);
+	    }
 	    return json_create_number_too_long;
 	}
-	jc->length += ivlen;
-	CHECKLENGTH;
     }
+    jc->length += ivlen;
+    CHECKLENGTH;
     return json_create_ok;
 }
 
@@ -388,7 +428,6 @@ json_create_add_float (json_create_t * jc, SV * sv)
 {
     double fv;
     STRLEN fvlen;
-    char fvbuf[MARGIN];
     fv = SvNV (sv);
     fvlen = snprintf ((char *) jc->buffer + jc->length, MARGIN, "%g", fv);
     if (fvlen >= MARGIN) {
@@ -417,7 +456,8 @@ json_create_add_stringified (json_create_t * jc, SV *r)
     return add_str_len (jc, s, (unsigned int) rlen);
 }
 
-/* Add the comma where necessary. */
+/* Add a comma where necessary. This is shared between objects and
+   arrays. */
 
 #define COMMA					\
     if (i > 0) {				\
@@ -440,12 +480,14 @@ json_create_add_object (json_create_t * jc, HV * input_hv)
     n_keys = hv_iterinit (input_hv);
     for (i = 0; i < n_keys; i++) {
 	HE * he;
+
+	/* Get the information from the hash. */
+
 	/* The key is not unicode unless Perl tells us it's
 	   unicode. */
 	jc->unicode_now = 0;
-	COMMA;
-	/* We have to do all this rigamarole because hv_iternextsv
-	   doesn't tell us whether the key is "SvUTF8" or not. */
+	/* The following is necessary because "hv_iternextsv" doesn't
+	   tell us whether the key is "SvUTF8" or not. */
 	he = hv_iternext (input_hv);
 	if (HeUTF8 (he)) {
 	    jc->unicode = 1;
@@ -453,7 +495,10 @@ json_create_add_object (json_create_t * jc, HV * input_hv)
 	}
 	key = hv_iterkey (he, & keylen);
 	value = hv_iterval (input_hv, he);
-	/* Back to the future. */
+
+	/* Write the information into the buffer. */
+
+	COMMA;
 	CALL (json_create_add_key_len (jc, (const unsigned char *) key,
 				       (STRLEN) keylen));
 	CALL (add_char (jc, ':'));
@@ -504,23 +549,21 @@ http://grep.cpan.me/?q=SvRX
 #define SvRXOK(sv) is_regexp(aTHX_ sv)
  
 static INLINE int
-is_regexp (pTHX_ SV* sv) {
-        SV* tmpsv;
+is_regexp (pTHX_ SV* sv)
+{
+    SV* tmpsv;
          
-        if (SvMAGICAL(sv))
-        {
-                mg_get(sv);
-        }
+    if (SvMAGICAL (sv)) {
+	mg_get (sv);
+    }
          
-        if (SvROK(sv)
-        && (tmpsv = (SV*) SvRV(sv))
-        && SvTYPE(tmpsv) == SVt_PVMG 
-        && (mg_find(tmpsv, PERL_MAGIC_qr)))
-        {
-                return TRUE;
-        }
-         
-        return FALSE;
+    if (SvROK (sv)
+        && (tmpsv = (SV*) SvRV (sv))
+        && SvTYPE (tmpsv) == SVt_PVMG 
+        && (mg_find (tmpsv, PERL_MAGIC_qr))) {
+	return TRUE;
+    }
+    return FALSE;
 }
  
 #endif
@@ -619,7 +662,7 @@ json_create_recursively (json_create_t * jc, SV * input)
 	    break;
 	    
 	default:
-	    UNKNOWN_TYPE_FAIL(t);
+	    UNKNOWN_TYPE_FAIL (t);
 	}
     }
     return json_create_ok;
@@ -671,29 +714,34 @@ json_create (SV * input)
 
     /* Unleash the dogs. */
     FINALCALL (json_create_recursively (& jc, input));
-    /* Copy the remaining text in jc's buffer into input. */
+    /* Copy the remaining text in jc's buffer into "jc.output". */
     FINALCALL (json_create_buffer_fill (& jc));
 
-    /*
-      At least one of the SVs was Unicoded, so switch on Unicode here.
-
-      We also checked that there was nothing with a non-ASCII byte in
-      an SV not marked as Unicode, so we are now going to trust that
-      the user did not send insane inputs. If there was something with
-      a non-ASCII byte not marked as Unicode, we're going to just
-      refuse to encode it.
-    */
-
     if (jc.unicode) {
+
+    /* At least one of the SVs was Unicoded, so switch on the Unicode
+       flag in jc.output.
+
+       We also checked that there was nothing with a non-ASCII byte in
+       an SV not marked as Unicode, so we are now going to trust that
+       the user did not send insane inputs. */
+
 	if (jc.non_unicode) {
-	    warn ("Mixed multibyte and binary inputs, refusing to encode to JSON");
+
+	    /* If there was something with a non-ASCII byte not marked
+	       as Unicode, we're going to just refuse to encode it. */
+
+	    warn ("Mixed multibyte and binary inputs, "
+		  "refusing to encode to JSON");
 	    SvREFCNT_dec (jc.output);
 	    return & PL_sv_undef;
 	}
 	SvUTF8_on (jc.output);
     }
+
     /* We didn't allocate any memory except for the SV, all our memory
        is on the stack, so there is nothing to free here. */
+
     return jc.output;
 }
 

@@ -60,5 +60,5 @@ unless ( eval { ExtUtils::MakeMaker->VERSION(6.63_03) } ) {
  
 WriteMakefile(
     %WriteMakefileArgs,
-#    OPTIMIZE => '-g -Wall -O -S',
+#    OPTIMIZE => '-g -Wall -O2',
 );
