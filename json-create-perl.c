@@ -368,16 +368,20 @@ json_create_add_integer (json_create_t * jc, SV * sv)
 	iv = -iv;
     }
     if (iv < 10) {
+	/* iv has exactly one digit. The first digit may be zero. */
 	spillover[ivlen] = DIGIT (iv);
 	ivlen++;
     }
     else if (iv < 100) {
+	/* iv has exactly two digits. The first digit is not zero. */
 	spillover[ivlen] = DIGIT (iv/10);
 	ivlen++;
 	spillover[ivlen] = DIGIT (iv);
 	ivlen++;
     }
     else if (iv < 1000) {
+	/* iv has exactly three digits. The first digit is not
+	   zero. */
 	spillover[ivlen] = DIGIT (iv/100);
 	ivlen++;
 	spillover[ivlen] = DIGIT (iv/10);
@@ -386,6 +390,7 @@ json_create_add_integer (json_create_t * jc, SV * sv)
 	ivlen++;
     }
     else if (iv < 10000) {
+	/* etc. */
 	spillover[ivlen] = DIGIT (iv/1000);
 	ivlen++;
 	spillover[ivlen] = DIGIT (iv/100);
@@ -407,9 +412,77 @@ json_create_add_integer (json_create_t * jc, SV * sv)
 	spillover[ivlen] = DIGIT (iv);
 	ivlen++;
     }
+    else if (iv < 1000000) {
+	spillover[ivlen] = DIGIT (iv/100000);
+	ivlen++;
+	spillover[ivlen] = DIGIT (iv/10000);
+	ivlen++;
+	spillover[ivlen] = DIGIT (iv/1000);
+	ivlen++;
+	spillover[ivlen] = DIGIT (iv/100);
+	ivlen++;
+	spillover[ivlen] = DIGIT (iv/10);
+	ivlen++;
+	spillover[ivlen] = DIGIT (iv);
+	ivlen++;
+    }
+    else if (iv < 10000000) {
+	spillover[ivlen] = DIGIT (iv/1000000);
+	ivlen++;
+	spillover[ivlen] = DIGIT (iv/100000);
+	ivlen++;
+	spillover[ivlen] = DIGIT (iv/10000);
+	ivlen++;
+	spillover[ivlen] = DIGIT (iv/1000);
+	ivlen++;
+	spillover[ivlen] = DIGIT (iv/100);
+	ivlen++;
+	spillover[ivlen] = DIGIT (iv/10);
+	ivlen++;
+	spillover[ivlen] = DIGIT (iv);
+	ivlen++;
+    }
+    else if (iv < 100000000) {
+	spillover[ivlen] = DIGIT (iv/10000000);
+	ivlen++;
+	spillover[ivlen] = DIGIT (iv/1000000);
+	ivlen++;
+	spillover[ivlen] = DIGIT (iv/100000);
+	ivlen++;
+	spillover[ivlen] = DIGIT (iv/10000);
+	ivlen++;
+	spillover[ivlen] = DIGIT (iv/1000);
+	ivlen++;
+	spillover[ivlen] = DIGIT (iv/100);
+	ivlen++;
+	spillover[ivlen] = DIGIT (iv/10);
+	ivlen++;
+	spillover[ivlen] = DIGIT (iv);
+	ivlen++;
+    }
+    else if (iv < 1000000000) {
+	spillover[ivlen] = DIGIT (iv/100000000);
+	ivlen++;
+	spillover[ivlen] = DIGIT (iv/10000000);
+	ivlen++;
+	spillover[ivlen] = DIGIT (iv/1000000);
+	ivlen++;
+	spillover[ivlen] = DIGIT (iv/100000);
+	ivlen++;
+	spillover[ivlen] = DIGIT (iv/10000);
+	ivlen++;
+	spillover[ivlen] = DIGIT (iv/1000);
+	ivlen++;
+	spillover[ivlen] = DIGIT (iv/100);
+	ivlen++;
+	spillover[ivlen] = DIGIT (iv/10);
+	ivlen++;
+	spillover[ivlen] = DIGIT (iv);
+	ivlen++;
+    }
     else {
-	/* The number is 100,000 or more, so we're just going to print
-	   it into "jc->buffer" with snprintf. */
+	/* The number is one billion (1000,000,000) or more, so we're
+	   just going to print it into "jc->buffer" with snprintf. */
 	ivlen += snprintf (spillover + ivlen, MARGIN - ivlen, "%ld", iv);
 	if (ivlen >= MARGIN) {
 	    if (JCEH) {
