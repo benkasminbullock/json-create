@@ -1,3 +1,5 @@
+/* XS part of JSON::Create. */
+
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"

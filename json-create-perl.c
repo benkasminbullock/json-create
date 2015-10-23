@@ -17,6 +17,9 @@
 #define INLINE
 #endif /* __GNUC__ */
 
+/* These are return statuses for the types of failures which can
+   occur. */
+
 typedef enum {
     json_create_ok,
     /* Unknown Perl svtype within the structure. */
