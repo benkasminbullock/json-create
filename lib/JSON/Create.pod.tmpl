@@ -14,10 +14,8 @@ JSON::Create - turn a Perl variable into JSON
 
 =head1 DESCRIPTION
 
-This module produces JSON out of Perl
-
-It currently works for the simple cases of strings, nested hashes and
-arrays, but it is in very early testing stages.
+This module produces JSON out of Perl for the simple cases of strings,
+numbers, nested hashes and arrays.
 
 =head1 FUNCTIONS
 
@@ -28,6 +26,9 @@ arrays, but it is in very early testing stages.
 Convert a Perl hash or array into JSON.
 
 =head1 CONVERSIONS
+
+This section details what conversions are applied to the various
+inputs to produce outputs.
 
 =head2 Hashes
 
@@ -42,16 +43,35 @@ identical to the Perl one.
 
 =head2 Scalars
 
-Scalars are converted to strings, JSON integers or JSON floats
-depending on what Perl says they contain. 
+Non-reference scalars are converted to strings, JSON integers or JSON
+floats depending on what Perl says they contain.
+
+=head3 Strings
+
+As far as possible, strings are written as-is to the JSON.  See
+L</RFC 7159> for details of JSON's rules for strings.
 
 Bytes of value less than 0x20 are converted into the appropriate JSON
-escapes. Currently, no escaping or checking is done for Unicode
-bytes.
+escapes, either the whitespace escapes \b (backspace) \r, \t, \n, and
+\f, or the form \u0001 for other control characters. The backslash is
+written as \\ and double quotes are written as \". The forward slash,
+/, is not escaped. Unicode values are not escaped.
 
 =head3 Integers
 
+Integers are printed in the obvious way. Note that what you input to
+Perl as an integer, Perl may interpret to be a floating point number.
+
 =head3 Floating point numbers
+
+Finite floating point numbers are printed using printf formatting via
+C<"%g">. 
+
+NaN (not a number) is converted to the string C<"nan">, the letters
+C<nan> surrounded by double quotes. Similarly, positive and negative
+infinity are converted to the strings C<"inf"> and C<"-inf">
+respectively. Note that JSON does not allow these as bare values. See
+L</RFC 7159> for details.
 
 =head3 The undefined value
 
@@ -59,7 +79,7 @@ Undefined values are mapped to the JSON literal "null".
 
 =head3 Booleans
 
-There is currently no way to produce booleans (JSON "true" and "false"
+There is no way to produce booleans (JSON "true" and "false"
 literals).
 
 =head3 Unicode escapes
@@ -77,6 +97,18 @@ undefined value. If every part of the input is not marked as "utf8",
 this does not happen, but there is also currently no validation of the
 output as being in Unicode, so binary strings can pass through without
 correction. See also L</BUGS>.
+
+=head3 Perl objects
+
+Perl objects are stringified as if via Perl's function "print". For
+example
+
+[% INCLUDE "/home/ben/projects/json-create/examples/object.pl" | indent (4) %]
+
+produces
+
+    Ba::Bi::Bu::Be::Bo=SCALAR(0x288de850)
+    {"babibubebo":"Ba::Bi::Bu::Be::Bo=SCALAR(0x288de850)"}
 
 =head2 Regexes
 
@@ -96,10 +128,28 @@ L</create_json>, is exported on request.
 
 =head1 SEE ALSO
 
+=over
+
+=item RFC 7159
+
+JSON is specified in L<RFC 7159 "The application/json Media Type for
+JavaScript Object Notation
+(JSON)"|http://www.ietf.org/rfc/rfc7159.txt>.
+
+=item json.org
+
+L<http://json.org> is the website for JSON, authored by Douglas
+Crockford.
+
+=item JSON::Parse
+
 This module is a companion module to the same author's
 L<JSON::Parse>. Please see that module's documentation for links to
-the JSON standard itself and a summary of the ever-growing list of
-JSON modules on CPAN.
+the JSON standard itself, a summary of the ever-growing list of JSON
+modules on CPAN (under "SEE ALSO") and the reasons why I decided to
+write these two modules (under "HISTORY").
+
+=back
 
 =head1 BUGS
 
@@ -117,18 +167,29 @@ outputs.
 
 However, due to user interest, there is a benchmarking script in
 F<bench/bench.pl> which compares the performance of the module with
-L<JSON::XS> and L<Cpanel::JSON::XS>. This only compares a few simple
-cases in which the output is correct.
+L<JSON::XS> and L<Cpanel::JSON::XS>. Outputs look like this:
+
+[% INCLUDE "/home/ben/projects/json-create/bench/bench.output" | indent (4) %]
+
+This only compares a few simple cases in which the output is
+correct. At the moment, this module doesn't handle Perl objects beyond
+the default stringification, or produce booleans, but adding these
+functionalities should have little to no effect on the above
+performance.
 
 =head1 HISTORY
 
 I started making this module so that, with this and JSON::Parse, I
 wouldn't have to ever use any of the existing JSON modules on CPAN
-ever again. See also L</SEE ALSO>. The exact time I've spent making
-this module is recorded in the file F<timesheet.txt> in the top
-directory of the distribution. At the time of version 0.04, I've
-spent 13 hours and 28 minutes working on this.
+ever again. See also L</SEE ALSO> and the HISTORY section of the
+documentation of L<JSON::Parse>.
+
+The exact time I've spent making this module is recorded in the file
+F<timesheet.txt> in the top directory of the distribution. At the time
+of version 0.04_02, I've spent 17 hours and 0 minutes working on
+this.
 
 =cut
 
 [% INCLUDE "author" %]
+[% INCLUDE "terminology" %]

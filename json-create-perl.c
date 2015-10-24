@@ -28,6 +28,8 @@ typedef enum {
     json_create_unicode_error,
     /* A printed number turned out to be longer than MARGIN bytes. */
     json_create_number_too_long,
+    /* Unknown type of floating point number. */
+    json_create_unknown_floating_point,
 }
 json_create_status_t;
 
@@ -506,6 +508,7 @@ json_create_add_float (json_create_t * jc, SV * sv)
     STRLEN fvlen;
     fv = SvNV (sv);
     if (isfinite (fv)) {
+	printf ("-----> %g\n", fv);
 	/* Soup this up. */
 	fvlen = snprintf ((char *) jc->buffer + jc->length, MARGIN, "%g", fv);
 	if (fvlen >= MARGIN) {
@@ -515,6 +518,7 @@ json_create_add_float (json_create_t * jc, SV * sv)
 	CHECKLENGTH;
     }
     else {
+	printf ("--> %g\n", fv);
 	if (isnan (fv)) {
 	    ADD("\"nan\"");
 	}
@@ -525,6 +529,9 @@ json_create_add_float (json_create_t * jc, SV * sv)
 	    else {
 		ADD("\"inf\"");
 	    }
+	}
+	else {
+	    return json_create_unknown_floating_point;
 	}
     }
     return json_create_ok;
@@ -701,11 +708,10 @@ json_create_recursively (json_create_t * jc, SV * input)
 	    CALL (json_create_add_object (jc, (HV *) r));
 	    break;
 
-/*
 	case SVt_PVMG:
-	    CALL (json_create_add_string (jc, r));
+	    CALL (json_create_add_string (jc, input));
 	    break;
-*/
+
 	case SVt_PVGV:
 	    /* Completely untested. */
 	    CALL (json_create_add_string (jc, r));
@@ -734,8 +740,8 @@ json_create_recursively (json_create_t * jc, SV * input)
 	    ADD ("null");
 	    break;
 
+	case SVt_PVMG:
 	case SVt_PV:
-//	case SVt_PVMG:
 	    CALL (json_create_add_string (jc, r));
 	    break;
 
@@ -748,6 +754,14 @@ json_create_recursively (json_create_t * jc, SV * input)
 	    break;
 
 	case SVt_PVNV:
+	    /* We need to handle non-finite numbers without using
+	       Perl's stringified forms, because we need to put quotes
+	       around them, whereas Perl will just print 'nan' the
+	       same way it will print '0.01'. 'nan' is not valid JSON,
+	       so we have to convert to '"nan"'. */
+	    CALL (json_create_add_float (jc, r));
+	    break;
+
 	case SVt_PVIV:
 	    /* Experimentally, add these as stringified. This code
 	       path is untested. */

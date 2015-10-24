@@ -30,7 +30,7 @@ my $stuff = {
 
 my $count = 400000;
 
-print "Comparing hash of ASCII strings...\n";
+header ("hash of ASCII strings");
 
 cmpthese (
     $count,
@@ -81,7 +81,7 @@ my $h2n = {
     E => 1_073_741_824,
 };
 
-print "Comparing hash of integers...\n";
+header ("hash of integers");
 
 cmpthese (
     $count,
@@ -112,7 +112,7 @@ my %unihash = (
 );
 
 
-print "Comparing hash of Unicode strings...\n";
+header ("hash of Unicode strings");
 
 cmpthese (
     $count,
@@ -129,3 +129,10 @@ cmpthese (
     },    
 );
 
+exit;
+
+sub header
+{
+    my ($head) = @_;
+    print "\nComparing $head...\n\n";
+}

@@ -30,7 +30,7 @@ SKIP: {
 	require 5.012_000;
     };
     if ($@) {
-	skip "Regex serialization not available for Perl < 5.12";
+	skip "Regex serialization not available for Perl < 5.12", 2;
     }
     my $rx = qr/See+ Emily play/;
     my $rx_json = create_json ($rx);
@@ -66,27 +66,20 @@ run ({'a' => undef},'{"a":null}');
 
 # The following tests the SVt_PVMG code path
 
-# When UTF-8 validation is added, this will change to use utf8, but at
-# the moment the module doesn't validate Unicode inputs so it cannot
-# be so. Switching the UTF-8 flags on and off within a module requires
-# the module author to independently do full-blown UTF-8 validation on
-# everything (!).
+package Ba::Bi::Bu::Be::Bo;
 
-# no utf8;
+sub new
+{
+    my $lion = 'ライオン';
+    return bless \$lion;
+}
 
-# package Ba::Bi::Bu::Be::Bo;
+package main;
 
-# sub new
-# {
-#     my $lion = 'ライオン';
-#     return bless \$lion;
-# }
+my $babibubebo = Ba::Bi::Bu::Be::Bo->new ();
+my $zoffixznet = {"babibubebo" => $babibubebo};
 
-# package main;
-
-# my $babibubebo = Ba::Bi::Bu::Be::Bo->new ();
-# my $zoffixznet = {"babibubebo" => $babibubebo};
-# run ($zoffixznet, qr/\"ライオン\"/);
+run ($zoffixznet, qr/\"Ba::Bi::Bu::Be::Bo=SCALAR\(.*?\)\"/);
 
 # Hash to numbers.
 
