@@ -3,7 +3,7 @@
 use warnings;
 use strict;
 use Test::More;
-use JSON::Create 'create_json';
+use JSON::Create::PP 'create_json';
 use JSON::Parse qw/valid_json parse_json/;
 my %hash = ('a' => 'b');
 my $json_hash = create_json (\%hash);
@@ -64,13 +64,13 @@ is ($bigneg_json, '[-1000000,2000000,-300000000]', "big negative numbers OK");
 run (undef, 'null');
 run ({'a' => undef},'{"a":null}');
 
-# The following tests the SVt_PVMG code path
+# # The following tests the SVt_PVMG code path
 
-# When UTF-8 validation is added, this will change to use utf8, but at
-# the moment the module doesn't validate Unicode inputs so it cannot
-# be so. Switching the UTF-8 flags on and off within a module requires
-# the module author to independently do full-blown UTF-8 validation on
-# everything (!).
+# # When UTF-8 validation is added, this will change to use utf8, but at
+# # the moment the module doesn't validate Unicode inputs so it cannot
+# # be so. Switching the UTF-8 flags on and off within a module requires
+# # the module author to independently do full-blown UTF-8 validation on
+# # everything (!).
 
 # no utf8;
 

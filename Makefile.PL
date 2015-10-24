@@ -27,6 +27,12 @@ my %WriteMakefileArgs = (
     ABSTRACT_FROM => $pod,
     AUTHOR => 'Ben Bullock <bkb@cpan.org>',
     LICENSE => 'perl',
+    PREREQ_PM => {
+	# Used in the PP version
+	'Carp' => 0,
+	# Used in the PP version
+	'Scalar::Util' => 0,
+    },
     TEST_REQUIRES => $tr,
     META_MERGE => {
 	'meta-spec' => {

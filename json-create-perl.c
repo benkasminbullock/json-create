@@ -701,10 +701,11 @@ json_create_recursively (json_create_t * jc, SV * input)
 	    CALL (json_create_add_object (jc, (HV *) r));
 	    break;
 
+/*
 	case SVt_PVMG:
 	    CALL (json_create_add_string (jc, r));
 	    break;
-
+*/
 	case SVt_PVGV:
 	    /* Completely untested. */
 	    CALL (json_create_add_string (jc, r));
@@ -734,7 +735,7 @@ json_create_recursively (json_create_t * jc, SV * input)
 	    break;
 
 	case SVt_PV:
-	case SVt_PVMG:
+//	case SVt_PVMG:
 	    CALL (json_create_add_string (jc, r));
 	    break;
 
