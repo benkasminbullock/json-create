@@ -508,7 +508,6 @@ json_create_add_float (json_create_t * jc, SV * sv)
     STRLEN fvlen;
     fv = SvNV (sv);
     if (isfinite (fv)) {
-	printf ("-----> %g\n", fv);
 	/* Soup this up. */
 	fvlen = snprintf ((char *) jc->buffer + jc->length, MARGIN, "%g", fv);
 	if (fvlen >= MARGIN) {
@@ -518,7 +517,6 @@ json_create_add_float (json_create_t * jc, SV * sv)
 	CHECKLENGTH;
     }
     else {
-	printf ("--> %g\n", fv);
 	if (isnan (fv)) {
 	    ADD("\"nan\"");
 	}

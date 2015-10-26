@@ -70,8 +70,11 @@ C<"%g">.
 NaN (not a number) is converted to the string C<"nan">, the letters
 C<nan> surrounded by double quotes. Similarly, positive and negative
 infinity are converted to the strings C<"inf"> and C<"-inf">
-respectively. Note that JSON does not allow these as bare values. See
-L</RFC 7159> for details.
+respectively. Note that JSON does not allow NaN or infinity as bare
+values. From page 6 of L</RFC 7159>:
+
+    Numeric values that cannot be represented in the grammar below
+    (such as Infinity and NaN) are not permitted.
 
 =head3 The undefined value
 
@@ -84,9 +87,9 @@ literals).
 
 =head3 Unicode escapes
 
-There is currently no facility to produce Unicode escapes, except for
-control characters (bytes less than 0x20 in value which are not
-whitespace or \b).
+There is no facility to produce Unicode escapes of the form C<\u3000>,
+except for control characters (bytes less than 0x20 in value which are
+not whitespace or \b).
 
 =head3 Unicode
 
@@ -171,23 +174,23 @@ L<JSON::XS> and L<Cpanel::JSON::XS>. Outputs look like this:
 
 [% INCLUDE "/home/ben/projects/json-create/bench/bench.output" | indent (4) %]
 
-This only compares a few simple cases in which the output is
-correct. At the moment, this module doesn't handle Perl objects beyond
-the default stringification, or produce booleans, but adding these
-functionalities should have little to no effect on the above
-performance.
+This only compares a few simple cases in which the output is correct,
+and it doesn't include floating point numbers. 
+
+This module doesn't currently handle Perl objects beyond the default
+stringification, or produce booleans, but adding these functionalities
+should have little to no effect on the above performance.
 
 =head1 HISTORY
 
-I started making this module so that, with this and JSON::Parse, I
-wouldn't have to ever use any of the existing JSON modules on CPAN
-ever again. See also L</SEE ALSO> and the HISTORY section of the
-documentation of L<JSON::Parse>.
+I started making this module so that, with this and L<JSON::Parse>, I
+wouldn't have to use the existing JSON modules on CPAN. See the
+HISTORY section of the documentation of L<JSON::Parse> for full
+details.
 
 The exact time I've spent making this module is recorded in the file
 F<timesheet.txt> in the top directory of the distribution. At the time
-of version 0.04_02, I've spent 17 hours and 0 minutes working on
-this.
+of version 0.05, I've spent 17 hours and 27 minutes working on this.
 
 =cut
 

@@ -1,8 +1,8 @@
-0.04_02 2015-10-24
-* Partial handling of NaN, negative and positive infinity via
+0.05 2015-10-26
+* Handling of NaN, negative and positive infinity via
   stringification.
 * Removed dereferencing behaviour for objects.
-* Documentation clarifies some behaviours.
+* Documentation clarifies some behaviours and performance.
 * Further performance wrangling for integers.
 
 0.04 2015-10-22
