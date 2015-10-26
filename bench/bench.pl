@@ -6,13 +6,25 @@ use warnings;
 use strict;
 use utf8;
 use Benchmark ':all';
+use FindBin '$Bin';
+
+# Just so I can use the latest versions
+
 use lib '/home/ben/projects/json-create/blib/lib';
 use lib '/home/ben/projects/json-create/blib/arch';
+
+# Contenders
+
 use JSON::Create 'create_json';
 use JSON::XS;
 use Cpanel::JSON::XS;
 
-use FindBin '$Bin';
+# Number of repetitions
+
+my $count = 400000;
+
+# ASCII string test
+
 my $stuff = {
     captain => 'planet',
     he => "'s",
@@ -27,8 +39,6 @@ my $stuff = {
     the => "planet's",
     side => "Captain Planet!",
 };
-
-my $count = 400000;
 
 header ("hash of ASCII strings");
 
@@ -129,6 +139,24 @@ cmpthese (
     },    
 );
 
+header ("array of floats");
+
+my $floats = [1.0e-10, 0.1, 1.1, 9e9, 3.141592653,-1.0e-20,-9e19,];
+
+cmpthese (
+    $count,
+    {
+	'JC' => sub {
+	    my $x = JSON::Create::create_json ($floats);
+	},
+	'JX' => sub {
+	    my $x = JSON::XS::encode_json ($floats);
+	},
+	'CJX' => sub {
+	    my $x = Cpanel::JSON::XS::encode_json ($floats);
+	},
+    },    
+);
 exit;
 
 sub header

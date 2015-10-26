@@ -508,7 +508,6 @@ json_create_add_float (json_create_t * jc, SV * sv)
     STRLEN fvlen;
     fv = SvNV (sv);
     if (isfinite (fv)) {
-	/* Soup this up. */
 	fvlen = snprintf ((char *) jc->buffer + jc->length, MARGIN, "%g", fv);
 	if (fvlen >= MARGIN) {
 	    return json_create_number_too_long;

@@ -9,7 +9,7 @@ binmode $builder->failure_output, ":utf8";
 binmode $builder->todo_output,    ":utf8";
 binmode STDOUT, ":encoding(utf8)";
 binmode STDERR, ":encoding(utf8)";
-use JSON::Parse 'valid_json';
+use JSON::Parse qw/valid_json parse_json/;
 use JSON::Create 'create_json';
 
 # # http://www.perlmonks.org/?node_id=703222
@@ -40,7 +40,7 @@ my $nan = -sin(9**9**9);
 # Seems to work on Perl 5.8:
 # http://codepad.org/Dum7uLwD
 
-note "$inf $neginf $nan\n";
+#note "$inf $neginf $nan\n";
 
 # The nan, inf, and -inf test the SVt_PVNV code path, because these
 # are both a string and a number.
@@ -66,9 +66,21 @@ SKIP: {
     };
     for my $thing ($bread, $rice, $lice) {
 	my $nanbread = create_json ($thing);
-	note ($nanbread);
-	ok (valid_json ($nanbread));
+#	note ($nanbread);
+	ok (valid_json ($nanbread), "non-finite is ok");
     }
 };
+
+my $floats = [1.0e-10, 0.1, 1.1, 9e9, 3.141592653,-1.0e-20,-9e19,];
+my $json = create_json ($floats);
+#note ($json);
+my $rt = parse_json ($json);
+is (ref $rt, 'ARRAY', "got array");
+cmp_ok (scalar (@$rt), '==', scalar (@$floats), "same number of members");
+for my $i (0..$#$rt) {
+    my $diff = abs (($rt->[$i] - $floats->[$i])/($rt->[$i] + $floats->[$i]));
+    cmp_ok ($diff, '<', 1/100_000.0, "value $i, $floats->[$i]");
+#    note ("$rt->[$i]  $floats->[$i] $diff");
+}
 
 done_testing ();
