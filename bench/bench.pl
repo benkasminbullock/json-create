@@ -21,7 +21,7 @@ use Cpanel::JSON::XS;
 
 # Number of repetitions
 
-my $count = 400000;
+my $count = 4000000;
 
 # ASCII string test
 

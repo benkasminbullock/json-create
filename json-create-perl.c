@@ -3,12 +3,6 @@
 
    It's kept in a separate file but #included into the main file,
    Create.xs.
-
-   MEMORY MANAGEMENT:
-
-   There is no memory allocation or freeing in this file except via
-   newSVpvn and SvREFCNT_dec. Freeing of the SV returned at the end of
-   json_create is left to Perl.
 */
 
 #ifdef __GNUC__
@@ -30,6 +24,8 @@ typedef enum {
     json_create_number_too_long,
     /* Unknown type of floating point number. */
     json_create_unknown_floating_point,
+    /* Bad format for floating point. */
+    json_create_bad_floating_format,
 }
 json_create_status_t;
 
@@ -91,7 +87,9 @@ typedef struct json_create {
     /* Place to write the buffer to. */
     SV * output;
     /* Format for floating point numbers. */
-    const char * fformat;
+    char * fformat;
+    /* Memory leak counter. */
+    int n_mallocs;
     /* Do any of the SVs have a Unicode flag? */
     unsigned int unicode : 1;
     /* Does the SV we're currently looking at have a Unicode flag? */
@@ -800,13 +798,66 @@ json_create_recursively (json_create_t * jc, SV * input)
 			 #x, status);				\
 	    }							\
 	    /* Free the memory of "output". */			\
-	    if (jc.output) {					\
-		SvREFCNT_dec (jc.output);			\
+	    if (jc->output) {					\
+		SvREFCNT_dec (jc->output);			\
+		jc->output = 0;					\
 	    }							\
 	    /* return undef; */					\
 	    return & PL_sv_undef;				\
 	}							\
     }
+
+/* Dog run. */
+
+static INLINE SV *
+json_create_run (json_create_t * jc, SV * input)
+{
+    /* Set up all the transient variables for reading. */
+
+    /* "jc.buffer" is dirty here, we have not initialized it, we are
+       just writing to uninitialized stack memory. "jc.length" is the
+       only thing we know is OK at this point. */
+    jc->length = 0;
+    /* Tell json_create_buffer_fill that it needs to allocate an
+       SV. */
+    jc->output = 0;
+    /* Not Unicode. */
+    jc->unicode = 0;
+    /* So far we have not seen any non-Unicode bytes over 0x80. */
+    jc->non_unicode = 0;
+
+    /* Unleash the dogs. */
+    FINALCALL (json_create_recursively (jc, input));
+    /* Copy the remaining text in jc's buffer into "jc->output". */
+    FINALCALL (json_create_buffer_fill (jc));
+
+    if (jc->unicode) {
+
+    /* At least one of the SVs was Unicoded, so switch on the Unicode
+       flag in jc->output.
+
+       We also checked that there was nothing with a non-ASCII byte in
+       an SV not marked as Unicode, so we are now going to trust that
+       the user did not send insane inputs. */
+
+	if (jc->non_unicode) {
+
+	    /* If there was something with a non-ASCII byte not marked
+	       as Unicode, we're going to just refuse to encode it. */
+
+	    warn ("Mixed multibyte and binary inputs, "
+		  "refusing to encode to JSON");
+	    SvREFCNT_dec (jc->output);
+	    return & PL_sv_undef;
+	}
+	SvUTF8_on (jc->output);
+    }
+
+    /* We didn't allocate any memory except for the SV, all our memory
+       is on the stack, so there is nothing to free here. */
+
+    return jc->output;
+}
 
 /* Master routine, callers should only ever use this. Everything above
    is only for the sake of "json_create" to use. */
@@ -815,52 +866,70 @@ static SV *
 json_create (SV * input)
 {
     json_create_t jc;
-
-    jc.length = 0;
-    /* Tell json_create_buffer_fill that it needs to allocate an
-       SV. */
-    jc.output = 0;
-    /* Not Unicode. */
-    jc.unicode = 0;
-    /* So far we have not seen any non-Unicode bytes over 0x80. */
-    jc.non_unicode = 0;
-
     /* Floating point number format. */
     jc.fformat = 0;
-    /* "jc.buffer" is dirty here, we have not initialized it, we are
-       just writing to uninitialized stack memory. "jc.length" is the
-       only thing we know is OK at this point. */
-
-    /* Unleash the dogs. */
-    FINALCALL (json_create_recursively (& jc, input));
-    /* Copy the remaining text in jc's buffer into "jc.output". */
-    FINALCALL (json_create_buffer_fill (& jc));
-
-    if (jc.unicode) {
-
-    /* At least one of the SVs was Unicoded, so switch on the Unicode
-       flag in jc.output.
-
-       We also checked that there was nothing with a non-ASCII byte in
-       an SV not marked as Unicode, so we are now going to trust that
-       the user did not send insane inputs. */
-
-	if (jc.non_unicode) {
-
-	    /* If there was something with a non-ASCII byte not marked
-	       as Unicode, we're going to just refuse to encode it. */
-
-	    warn ("Mixed multibyte and binary inputs, "
-		  "refusing to encode to JSON");
-	    SvREFCNT_dec (jc.output);
-	    return & PL_sv_undef;
-	}
-	SvUTF8_on (jc.output);
-    }
-
-    /* We didn't allocate any memory except for the SV, all our memory
-       is on the stack, so there is nothing to free here. */
-
-    return jc.output;
+    return json_create_run (& jc, input);
 }
 
+static json_create_status_t
+json_create_new (json_create_t ** jc_ptr)
+{
+    json_create_t * jc;
+    Newxz (jc, 1, json_create_t);
+    jc->n_mallocs = 0;
+    jc->n_mallocs++;
+    jc->fformat = 0;
+    * jc_ptr = jc;
+    return json_create_ok;
+}
+
+static json_create_status_t
+json_create_free_fformat (json_create_t * jc)
+{
+    if (jc->fformat) {
+	Safefree (jc->fformat);
+	jc->fformat = 0;
+	jc->n_mallocs--;
+    }
+    return json_create_ok;
+}
+
+static json_create_status_t
+json_create_set_fformat (json_create_t * jc, SV * fformat)
+{
+    char * ff;
+    STRLEN fflen;
+    int i;
+
+    CALL (json_create_free_fformat (jc));
+    if (! SvTRUE (fformat)) {
+	jc->fformat = 0;
+	return json_create_ok;
+    }
+
+    ff = SvPV(fformat, fflen);
+    if (! strchr (ff, '%')) {
+	return json_create_bad_floating_format;
+    }
+    Newx (jc->fformat, fflen + 1, char);
+    jc->n_mallocs++;
+    for (i = 0; i < fflen; i++) {
+	/* We could also check the format in this loop. */
+	jc->fformat[i] = ff[i];
+    }
+    jc->fformat[fflen] = '\0';
+    return json_create_ok;
+}
+    
+static json_create_status_t
+json_create_free (json_create_t * jc)
+{
+    CALL (json_create_free_fformat (jc));
+    jc->n_mallocs--;
+    if (jc->n_mallocs != 0) {
+	fprintf (stderr, "%s:%d: n_mallocs = %d\n",
+		 __FILE__, __LINE__, jc->n_mallocs);
+    }
+    Safefree (jc);
+    return json_create_ok;
+}

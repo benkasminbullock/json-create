@@ -16,3 +16,7 @@ MYMETA..*
 ^timesheet$
 ^unicode\.o$
 ^makeitfile$
+# Example file outputs
+^examples/.*-out\.txt$
+# Benchmark output
+^bench/bench\.output
