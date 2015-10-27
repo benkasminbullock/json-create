@@ -2,8 +2,10 @@
 use warnings;
 use strict;
 use Perl::Build;
+use FindBin '$Bin';
 perl_build (
-    pod => ['lib/JSON/Create.pod',],
+    make_pod => "$Bin/make-pod.pl",
+#    pod => ['lib/JSON/Create.pod',],
     c => [
     {
 	dir => '/home/ben/projects/unicode-c',

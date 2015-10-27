@@ -36,10 +36,22 @@ Associative arrays are converted to JSON objects. The keys are written
 into JSON as strings, with any control characters escaped. The order
 of the keys is as they are supplied by Perl.
 
+[% INCLUDE "hash.pl" | xtidy %]
+
+outputs
+
+[% INCLUDE "hash-out.txt" | xtidy %]
+
 =head2 Arrays
 
 Arrays are converted to JSON arrays. The order of the array is
 identical to the Perl one.
+
+[% INCLUDE "array.pl" | xtidy %]
+
+outputs
+
+[% INCLUDE "array-out.txt" | xtidy %]
 
 =head2 Scalars
 
@@ -57,6 +69,12 @@ escapes, either the whitespace escapes \b (backspace) \r, \t, \n, and
 written as \\ and double quotes are written as \". The forward slash,
 /, is not escaped. Unicode values are not escaped.
 
+[% INCLUDE "weirdstring.pl" | xtidy %]
+
+outputs
+
+[% INCLUDE "weirdstring-out.txt" | xtidy %]
+
 =head3 Integers
 
 Integers are printed in the obvious way. Note that what you input to
@@ -65,7 +83,8 @@ Perl as an integer, Perl may interpret to be a floating point number.
 =head3 Floating point numbers
 
 Finite floating point numbers are printed using printf formatting via
-C<"%g">. 
+C<"%g">. There is currently no way to increase the precision of the
+number-printing beyond the default six-digit precision. See L</BUGS>.
 
 NaN (not a number) is converted to the string C<"nan">, the letters
 C<nan> surrounded by double quotes. Similarly, positive and negative
@@ -83,7 +102,7 @@ Undefined values are mapped to the JSON literal "null".
 =head3 Booleans
 
 There is no way to produce booleans (JSON "true" and "false"
-literals).
+literals). See L</BUGS>.
 
 =head3 Unicode escapes
 
@@ -106,20 +125,21 @@ correction. See also L</BUGS>.
 Perl objects are stringified as if via Perl's function "print". For
 example
 
-[% INCLUDE "/home/ben/projects/json-create/examples/object.pl" | indent (4) %]
+[% INCLUDE "/home/ben/projects/json-create/examples/object.pl" | xtidy %]
 
 produces
 
-    Ba::Bi::Bu::Be::Bo=SCALAR(0x288de850)
-    {"babibubebo":"Ba::Bi::Bu::Be::Bo=SCALAR(0x288de850)"}
+[% INCLUDE "object-out.txt" | xtidy %]
 
-=head2 Regexes
+=head2 Other reference types
+
+=head3 Regexes
 
 If the scalar contains a regex then JSON::Create lets Perl convert the
 regex to a string then adds that. The output depends on the Perl
 version.
 
-=head2 Code references and other
+=head3 Code references and other
 
 A code reference in the input causes the entire return value to be the
 undefined value.
@@ -128,6 +148,12 @@ undefined value.
 
 The module exports nothing except by request. One function,
 L</create_json>, is exported on request.
+
+=head1 INSTALLATION
+
+The module uses C internally, so you need a C compiler to install
+it. There is also an undocumented "pure Perl" module JSON::Create::PP
+in the distribution, which could be used in a pinch.
 
 =head1 SEE ALSO
 
@@ -162,6 +188,14 @@ UTF-8 flag everywhere, since unmarked binary bytes are currently not
 validated independent of Perl's validation, which does not apply to
 unmarked strings.
 
+There is currently no support for booleans or Perl objects beyond the
+default stringification.
+
+There is currently no way to specify the precision of floating point
+numbers.
+
+There is currently no facility to add whitespace to the output JSON.
+
 =head1 PERFORMANCE
 
 This module is currently at an early stage of development, so speed is
@@ -174,10 +208,11 @@ L<JSON::XS> and L<Cpanel::JSON::XS>. Outputs look like this:
 
 [% INCLUDE "/home/ben/projects/json-create/bench/bench.output" | indent (4) %]
 
-This only compares a few simple cases in which the output is correct,
-and it doesn't include floating point numbers. 
+This only compares a few simple cases in which the output is
+demonstrably correct. Also, at least on my computer, the numbers seem
+to vary wildly from one test to another.
 
-This module doesn't currently handle Perl objects beyond the default
+JSON::Create doesn't currently handle Perl objects beyond the default
 stringification, or produce booleans, but adding these functionalities
 should have little to no effect on the above performance.
 
@@ -190,21 +225,15 @@ details.
 
 The exact time I've spent making this module is recorded in the file
 F<timesheet.txt> in the top directory of the distribution. At the time
-of version 0.05, I've spent 18 hours and 9 minutes working on this.
+of version 0.06, I've spent 19 hours and 12 minutes working on this.
 
-The module is currently in production everywhere that I need to
-generate JSON within Perl. However, I don't use Perl objects very
-much, and so far I don't have a specific need for booleans, so support
-for these is lagging. Patches are welcome.
-
-Unfortunately, just after the earliest testing version was released to
-CPAN, a weirdo turned up and started harassing me by insisting I had
-to instantly add features that he wanted to the module, or he would
-add a negative review on CPAN ratings. I have deleted the weirdo's bug
-reports, but I cannot delete his CPAN ratings, so this module is stuck
-with an unfortunate rating. Please ignore it.
-
-=cut
+The module is currently in use everywhere that I need to generate JSON
+within Perl. However, I don't use Perl objects very much, and so far I
+don't have a specific need for booleans, so support for these is
+lagging. Patches are welcome.
 
 [% INCLUDE "author" %]
 [% INCLUDE "terminology" %]
+
+=cut
+

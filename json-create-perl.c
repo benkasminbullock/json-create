@@ -90,6 +90,8 @@ typedef struct json_create {
     unsigned char buffer[BUFSIZE];
     /* Place to write the buffer to. */
     SV * output;
+    /* Format for floating point numbers. */
+    const char * fformat;
     /* Do any of the SVs have a Unicode flag? */
     unsigned int unicode : 1;
     /* Does the SV we're currently looking at have a Unicode flag? */
@@ -218,13 +220,19 @@ add_str_len (json_create_t * jc, const char * s, unsigned int slen)
 static INLINE json_create_status_t
 add_one_u (json_create_t * jc, unsigned int u)
 {
-    char hex[5];
-    ADD ("\\u");
+    char * spillover;
+    int addlength;
+    addlength = 0;
+    spillover = (char *) (jc->buffer) + jc->length;
+    spillover[0] = '\\';
+    spillover[1] = 'u';
+    addlength += 2;
     /* In the case that we want to Unicode-escape everything, this
        would be a good place to soup-up. The below code is
        inefficient. */
-    snprintf (hex, 4, "%04u", u);
-    CALL (add_str_len (jc, hex, 4));
+    addlength += snprintf (spillover + addlength, 5, "%04x", u);
+    jc->length += addlength;
+    CHECKLENGTH;
     return json_create_ok;
 }
 
@@ -508,7 +516,12 @@ json_create_add_float (json_create_t * jc, SV * sv)
     STRLEN fvlen;
     fv = SvNV (sv);
     if (isfinite (fv)) {
-	fvlen = snprintf ((char *) jc->buffer + jc->length, MARGIN, "%g", fv);
+	if (jc->fformat) {
+	    fvlen = snprintf ((char *) jc->buffer + jc->length, MARGIN, jc->fformat, fv);
+	}
+	else {
+	    fvlen = snprintf ((char *) jc->buffer + jc->length, MARGIN, "%g", fv);
+	}
 	if (fvlen >= MARGIN) {
 	    return json_create_number_too_long;
 	}
@@ -812,6 +825,8 @@ json_create (SV * input)
     /* So far we have not seen any non-Unicode bytes over 0x80. */
     jc.non_unicode = 0;
 
+    /* Floating point number format. */
+    jc.fformat = 0;
     /* "jc.buffer" is dirty here, we have not initialized it, we are
        just writing to uninitialized stack memory. "jc.length" is the
        only thing we know is OK at this point. */

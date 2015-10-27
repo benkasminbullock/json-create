@@ -1,5 +1,6 @@
-0.05_01 2015-10-26
+0.06 2015-10-27
 * More tests and benchmarks for floating point
+* Fixes bug with ASCII control characters
 
 0.05 2015-10-26
 * Handling of NaN, negative and positive infinity via

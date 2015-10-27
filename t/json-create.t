@@ -119,6 +119,13 @@ my $h2n = {
 
 run ($h2n, \&alnums);
 
+my $backslasht = {monkey => "\t"};
+run ($backslasht, '{"monkey":"\t"}', "tab escape");
+my $controlchar = {cc => "\x01"};
+run ($controlchar, '{"cc":"\u0001"}', "ASCII control character");
+my $weirdstring = "\t\r\n\x00";
+run ({in => $weirdstring}, '{"in":"\t\r\n\u0000"}', "string containing a nul byte");
+
 done_testing ();
 exit;
 # Local variables:
@@ -127,26 +134,32 @@ exit;
 
 sub run
 {
-    my ($input, $test) = @_;
+    my ($input, $test, $name) = @_;
+    if (! defined $name) {
+	$name = '';
+    }
+    else {
+	$name = " - $name";
+    }
     my $output;
     eval {
 	$output = create_json ($input);
     };
 #    print "$output\n";
-    ok (! $@, "no errors on input");
-    ok (valid_json ($output), "output is valid JSON");
+    ok (! $@, "no errors on input $name");
+    ok (valid_json ($output), "output is valid JSON $name");
     if (ref $test eq 'CODE') {
 	&{$test} ($input, $output);
     }
     elsif (ref $test eq 'Regexp') {
-	like ($output, $test, "input looks as expected");
+	like ($output, $test, "input looks as expected $name");
     }
     elsif (! defined $test) {
 	# skip this test
     }
     else {
 	# Assume string
-	is ($output, $test, "input is as expected");
+	is ($output, $test, "output is what was expected $name");
     }
     return;
 }
