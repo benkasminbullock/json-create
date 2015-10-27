@@ -1,3 +1,6 @@
+0.05_01 2015-10-26
+* More tests and benchmarks for floating point
+
 0.05 2015-10-26
 * Handling of NaN, negative and positive infinity via
   stringification.
