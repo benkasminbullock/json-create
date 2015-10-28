@@ -1,7 +1,9 @@
-0.06_02 2015-10-28
+0.06_03 2015-10-28
 * More flexible formatting for floating point numbers
 * Experimental support for booleans
 * User option to escape / into \/.
+* User-generated JSON callbacks
+* Validation of user-generated JSON
 
 0.06 2015-10-27
 * More tests and benchmarks for floating point

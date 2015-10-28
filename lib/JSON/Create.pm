@@ -7,7 +7,7 @@ require Exporter;
 );
 use warnings;
 use strict;
-our $VERSION = '0.06_02';
+our $VERSION = '0.06_03';
 require XSLoader;
 XSLoader::load ('JSON::Create', $VERSION);
 
@@ -38,11 +38,30 @@ sub set_fformat
 sub bool
 {
     my ($obj, @list) = @_;
-    my %handlers;
+    my $handlers = $obj->get_handlers ();
     for my $item (@list) {
-	$handlers{$item} = 'bool';
+	$handlers->{$item} = 'bool';
     }
-    $obj->set_handlers (\%handlers);
+}
+
+sub obj
+{
+    my ($obj, %handlers) = @_;
+    my $handlers = $obj->get_handlers ();
+    for my $item (keys %handlers) {
+	my $value = $handlers{$item};
+	# Check it's a code reference somehow.
+	$handlers->{$item} = $value;
+    }
+}
+
+sub validate
+{
+    my ($obj, $value) = @_;
+    require JSON::Parse;
+    JSON::Parse->import ('assert_valid_json');
+    $obj->set_validate ($value);
 }
 
 1;
+

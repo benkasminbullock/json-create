@@ -142,6 +142,10 @@ produces
 
 [% INCLUDE "object-out.txt" | xtidy %]
 
+If you want to make the JSON for your object yourself, you can
+register a JSON generator using the L</obj> method. This requires a
+JSON::Create object, created with L</new>.
+
 =head2 Other reference types
 
 =head3 Regexes
@@ -165,7 +169,8 @@ object.
 
     my $jc = JSON::Create->new ();
 
-Create a new "JSON::Create" object.
+Create a new "JSON::Create" object. You need to use L</run> to
+generate JSON with this.
 
 =head2 run
 
@@ -206,6 +211,14 @@ outputs
 
 [% INCLUDE "escape-slash-out.txt" | xtidy %]
 
+=head3 obj
+
+    $jc->obj ('Zilog::Z80' => sub { my ($obj) = @_; print "\"Z80\""; });
+
+With this method you can register JSON generators for your Perl
+objects. Call it with a hash with keys of object names and and values
+of code references. See also L</validate>.
+
 =head3 set_fformat
 
     $jc->set_fformat ('%e');
@@ -232,7 +245,17 @@ into the \u3000 format. (Not implemented yet.)
 
 Call this with a true value to make Unicode escapes use upper case
 hexadecimal. Call this with a false value to revert to the default
-behaviour. This isn't tested yet.
+behaviour. This isn't tested yet, because the Unicode validation is
+not yet implemented.
+
+=head3 validate
+
+    $jc->validate (1);
+
+If this is called with a true value, validate the user-generated JSON
+given by the callbacks registered with L</obj>. The validation is done
+via the routine C<assert_valid_json> of L<JSON::Parse>, so you need to
+have that module installed to use this.
 
 =head1 EXPORTS
 
@@ -243,7 +266,8 @@ L</create_json>, is exported on request.
 
 The module uses C internally, so you need a C compiler to install
 it. There is also an undocumented "pure Perl" module JSON::Create::PP
-in the distribution, which could be used in a pinch.
+in the distribution, which could be used in a pinch. (This is
+basically a reference module though.)
 
 =head1 SEE ALSO
 

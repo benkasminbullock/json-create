@@ -62,6 +62,8 @@ typedef struct json_create {
     unsigned int unicode_upper : 1;
     /* Should we escape all non-ascii? */
     unsigned int unicode_escape_all : 1;
+    /* Should we validate user-defined JSON? */
+    unsigned int validate : 1;
 }
 json_create_t;
 
@@ -707,9 +709,127 @@ is_regexp (pTHX_ SV* sv)
 //#define DEBUGOBJ
 
 static json_create_status_t
-json_create_handle_object (json_create_t * jc, SV * input, SV * r)
+json_create_validate_user_json (json_create_t * jc, SV * json)
+{
+    SV * error;
+    dSP;
+    ENTER;
+    SAVETMPS;
+    PUSHMARK(SP);
+    XPUSHs (sv_2mortal (newSVsv (json)));
+    PUTBACK;
+/*
+    fprintf (stderr, "%s:%d: validating %s.\n", __FILE__, __LINE__,
+	     SvPV_nolen (json));
+*/
+    call_pv ("JSON::Parse::assert_valid_json",
+	     G_EVAL|G_DISCARD);
+    FREETMPS;
+    LEAVE;  
+//    fprintf (stderr, "%s:%d: validating.\n", __FILE__, __LINE__);
+    error = get_sv ("@", 0);
+    if (! error) {
+	return json_create_ok;
+    }
+//    fprintf (stderr, "%s:%d: validating %p.\n", __FILE__, __LINE__, error);
+    if (SvOK (error) && SvCUR (error) > 0) {
+//	fprintf (stderr, "%s:%d: validating.\n", __FILE__, __LINE__);
+	croak ("JSON::Parse::assert_valid_json failed for '%s': %s", SvPV_nolen (json), SvPV_nolen (error));
+    }
+//    fprintf (stderr, "%s:%d: validating.\n", __FILE__, __LINE__);
+    return json_create_ok;
+}
+
+
+static json_create_status_t
+json_create_call_to_json (json_create_t * jc, SV * cv, SV * r)
+{
+//    fprintf (stderr, "Now that's a real mother for you, yeah.\n");
+    I32 count;
+    SV * json;
+    char * jsonc;
+    STRLEN jsonl;
+// https://metacpan.org/source/AMBS/Math-GSL-0.35/swig/gsl_typemaps.i#L438
+    dSP;
+    
+    ENTER;
+    SAVETMPS;
+    
+    PUSHMARK(SP);
+//https://metacpan.org/source/AMBS/Math-GSL-0.35/swig/gsl_typemaps.i#L482
+    XPUSHs(sv_2mortal(newRV(r)));
+    PUTBACK;
+    count = call_sv (cv, 0);
+    if (count != 1) {
+	fprintf (stderr, "not one but %ld .\n", count);
+	return json_create_ok;
+    }
+    json = POPs;
+    SvREFCNT_inc (json);
+    FREETMPS;
+    LEAVE;  
+    jsonc = SvPV (json, jsonl);
+    if (jc->validate) {
+//	fprintf (stderr, "validating.\n");
+	CALL (json_create_validate_user_json (jc, json));
+    }
+    CALL (add_str_len (jc, jsonc, jsonl));
+    SvREFCNT_dec (json);
+    return json_create_ok;
+}
+
+static INLINE json_create_status_t
+json_create_handle_ref (json_create_t * jc, SV * input)
+{
+    svtype t;
+    SV * r;
+    r = SvRV (input);
+    t = SvTYPE (r);
+    /* First try a switch for the types which have been in Perl
+       for a while. We can't add the case of SVt_REGEXP here since
+       it's not present in some older Perls, so we test for
+       regexes in the default: case at the bottom. */
+    switch (t) {
+    case SVt_PVAV:
+	CALL (json_create_add_array (jc, (AV *) r));
+	break;
+
+    case SVt_PVHV:
+	CALL (json_create_add_object (jc, (HV *) r));
+	break;
+
+    case SVt_PVMG:
+#ifdef DEBUGOBJ
+	fprintf (stderr, "monkey monkey.\n");
+#endif 
+	CALL (json_create_add_string (jc, input));
+	break;
+
+    case SVt_PVGV:
+	/* Completely untested. */
+	CALL (json_create_add_string (jc, r));
+	break;
+
+    default:
+	/* Test for regex, possibly using the Toby Inkster code
+	   above. */
+	if (SvRXOK (r)) {
+	    /* Use it as a string. */
+	    CALL (json_create_add_string (jc, r));
+	}
+	else {
+	    UNKNOWN_TYPE_FAIL (t);
+	}
+    }
+    return json_create_ok;
+}
+
+static json_create_status_t
+json_create_handle_object (json_create_t * jc, SV * input)
 {
     const char * objtype;
+    SV * r;
+    r = SvRV (input);
     /* The second argument to sv_reftype is true if we
        look it up in the object table, false
        otherwise. Undocumented, reported as
@@ -737,6 +857,26 @@ json_create_handle_object (json_create_t * jc, SV * input, SV * r)
 		}
 		else {
 		    ADD ("false");
+		}
+	    }
+	    else if (SvROK (*sv_ptr)) {
+		SV * what;
+		what = SvRV (*sv_ptr);
+		if (SvROK (what)) {
+//		    fprintf (stderr, "It's a ref baby.\n");
+		    what = SvRV(what);
+		}
+/*
+		fprintf (stderr, "Now what a real mother for you yeah %d.\n",
+			 SvTYPE (what));
+*/
+		switch (SvTYPE (what)) {
+		case SVt_PVCV:
+		    CALL (json_create_call_to_json (jc, what, r));
+		    break;
+		default:
+//		    fprintf (stderr, "Not code, looks like %s\n", SvPV_nolen (what));
+		    goto nothandled;
 		}
 	    }
 	    else {
@@ -770,10 +910,8 @@ json_create_handle_object (json_create_t * jc, SV * input, SV * r)
 		fprintf (stderr, "%s: %s\n", key, SvPV_nolen (s));
 	    }
 #endif /* 0 */
-	    /* It's an object, but it's not in our handlers, so we'll
-	       just stringify it. */
 	nothandled:
-	    CALL (json_create_add_string (jc, input));
+	    CALL (json_create_handle_ref (jc, input));
 	}
     }
     return json_create_ok;
@@ -794,50 +932,11 @@ json_create_recursively (json_create_t * jc, SV * input)
     }
     if (SvROK (input)) {
 	/* We have a reference, so decide what to do with it. */
-	svtype t;
-	SV * r;
-	r = SvRV (input);
-	t = SvTYPE (r);
-	/* First try a switch for the types which have been in Perl
-	   for a while. We can't add the case of SVt_REGEXP here since
-	   it's not present in some older Perls, so we test for
-	   regexes in the default: case at the bottom. */
-	switch (t) {
-	case SVt_PVAV:
-	    CALL (json_create_add_array (jc, (AV *) r));
-	    break;
-
-	case SVt_PVHV:
-	    CALL (json_create_add_object (jc, (HV *) r));
-	    break;
-
-	case SVt_PVMG:
-#ifdef DEBUGOBJ
-	    fprintf (stderr, "monkey monkey.\n");
-#endif 
-	    if (sv_isobject (input) && jc->handlers) {
-		CALL (json_create_handle_object (jc, input, r));
-	    }
-	    else {
-		CALL (json_create_add_string (jc, input));
-	    }
-	    break;
-
-	case SVt_PVGV:
-	    /* Completely untested. */
-	    CALL (json_create_add_string (jc, r));
-	    break;
-
-	default:
-	    /* Test for regex, possibly using the Toby Inkster code
-	       above. */
-	    if (SvRXOK (r)) {
-		/* Use it as a string. */
-		CALL (json_create_add_string (jc, r));
-	    }
-	    else {
-		UNKNOWN_TYPE_FAIL (t);
-	    }
+	if (sv_isobject (input) && jc->handlers) {
+	    CALL (json_create_handle_object (jc, input));
+	}
+	else {
+	    CALL (json_create_handle_ref (jc, input));
 	}
     }
     else {
@@ -1041,15 +1140,21 @@ json_create_set_fformat (json_create_t * jc, SV * fformat)
 }
 
 static json_create_status_t
-json_create_free (json_create_t * jc)
+json_create_remove_handlers (json_create_t * jc)
 {
-    CALL (json_create_free_fformat (jc));
-
     if (jc->handlers) {
 	SvREFCNT_dec ((SV *) jc->handlers);
 	jc->handlers = 0;
 	jc->n_mallocs--;
     }
+    return json_create_ok;
+}
+
+static json_create_status_t
+json_create_free (json_create_t * jc)
+{
+    CALL (json_create_free_fformat (jc));
+    CALL (json_create_remove_handlers (jc));
 
     /* Finished, check we have no leaks before freeing. */
 

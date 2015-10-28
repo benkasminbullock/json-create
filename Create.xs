@@ -84,22 +84,31 @@ CODE:
 	jc->unicode_escape_all = SvTRUE (onoff) ? 1 : 0;
 
 void
+set_validate (jc, onoff)
+	JSON::Create jc;
+	SV * onoff;
+CODE:
+	jc->validate = SvTRUE (onoff) ? 1 : 0;
+
+void
 set_handlers (jc, handlers)
 	JSON::Create jc
 	HV * handlers
 CODE:
-	if (jc->handlers) {
-		SvREFCNT_dec ((SV*) jc->handlers);
-		jc->handlers = 0;
-	}
+        PERLJCCALL (json_create_remove_handlers (jc));
 	SvREFCNT_inc ((SV*) handlers);
 	jc->n_mallocs++;
 	jc->handlers = handlers;
+OUTPUT:
 
 HV *
-get_handlers (jc, handlers)
+get_handlers (jc)
 	JSON::Create jc
 CODE:
+	if (! jc->handlers) {
+		jc->handlers = newHV();
+		jc->n_mallocs++;
+	}
 	RETVAL = jc->handlers;
 OUTPUT:
 	RETVAL

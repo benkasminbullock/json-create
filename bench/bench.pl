@@ -22,11 +22,11 @@ use Cpanel::JSON::XS;
 # Number of repetitions. No matter how large this is made, the results
 # always vary wildly from run to run.
 
-my $count = 1000;
+my $count = 100;
 # The results seem to stabilize better if we run the inner loop a
 # number of times. Still, unfortunately, setting this very large
 # doesn't stabilize the results completely.
-my $inner = 3000;
+my $inner = 10000;
 
 print "Versions used:\n\n";
 my @modules = qw/Cpanel::JSON::XS JSON::XS JSON::Create/;
