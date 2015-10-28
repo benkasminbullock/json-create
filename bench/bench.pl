@@ -19,9 +19,23 @@ use JSON::Create 'create_json';
 use JSON::XS;
 use Cpanel::JSON::XS;
 
-# Number of repetitions
+# Number of repetitions. No matter how large this is made, the results
+# always vary wildly from run to run.
 
-my $count = 4000000;
+my $count = 1000;
+# The results seem to stabilize better if we run the inner loop a
+# number of times. Still, unfortunately, setting this very large
+# doesn't stabilize the results completely.
+my $inner = 1000;
+
+print "Versions used:\n\n";
+my @modules = qw/Cpanel::JSON::XS JSON::XS JSON::Create/;
+for my $module (@modules) {
+    my $abbrev = $module;
+    $abbrev =~ s/(\w)\w+\W*/$1/g; 
+    my $version = eval "\$${module}::VERSION";
+    print "$abbrev\t$module\t$version\n";
+}
 
 # ASCII string test
 
@@ -46,13 +60,19 @@ cmpthese (
     $count,
     {
 	'JC' => sub {
-	    my $x = JSON::Create::create_json ($stuff);
+	    for (1..$inner) {
+		my $x = JSON::Create::create_json ($stuff);
+	    }
 	},
 	'JX' => sub {
-	    my $x = JSON::XS::encode_json ($stuff);
+	    for (1..$inner) {
+		my $x = JSON::XS::encode_json ($stuff);
+	}
 	},
 	'CJX' => sub {
-	    my $x = Cpanel::JSON::XS::encode_json ($stuff);
+	    for (1..$inner) {
+		my $x = Cpanel::JSON::XS::encode_json ($stuff);
+	    }
 	},
     },    
 );
@@ -97,13 +117,19 @@ cmpthese (
     $count,
     {
 	'JC' => sub {
-	    my $x = JSON::Create::create_json ($h2n);
+	    for (1..$inner) {
+		my $x = JSON::Create::create_json ($h2n);
+	    }
 	},
 	'JX' => sub {
-	    my $x = JSON::XS::encode_json ($h2n);
+	    for (1..$inner) {
+		my $x = JSON::XS::encode_json ($h2n);
+	    }
 	},
 	'CJX' => sub {
-	    my $x = Cpanel::JSON::XS::encode_json ($h2n);
+	    for (1..$inner) {
+		my $x = Cpanel::JSON::XS::encode_json ($h2n);
+	    }
 	},
     },    
 );
@@ -128,13 +154,19 @@ cmpthese (
     $count,
     {
 	'JC' => sub {
-	    my $x = JSON::Create::create_json (\%unihash);
+	    for (1..$inner) {
+		my $x = JSON::Create::create_json (\%unihash);
+	    }
 	},
 	'JX' => sub {
-	    my $x = JSON::XS::encode_json (\%unihash);
+	    for (1..$inner) {
+		my $x = JSON::XS::encode_json (\%unihash);
+	    }
 	},
 	'CJX' => sub {
-	    my $x = Cpanel::JSON::XS::encode_json (\%unihash);
+	    for (1..$inner) {
+		my $x = Cpanel::JSON::XS::encode_json (\%unihash);
+	    }
 	},
     },    
 );
@@ -147,13 +179,19 @@ cmpthese (
     $count,
     {
 	'JC' => sub {
-	    my $x = JSON::Create::create_json ($floats);
+	    for (1..$inner) {
+		my $x = JSON::Create::create_json ($floats);
+	    }
 	},
 	'JX' => sub {
-	    my $x = JSON::XS::encode_json ($floats);
+	    for (1..$inner) {
+		my $x = JSON::XS::encode_json ($floats);
+	    }
 	},
 	'CJX' => sub {
-	    my $x = Cpanel::JSON::XS::encode_json ($floats);
+	    for (1..$inner) {
+		my $x = Cpanel::JSON::XS::encode_json ($floats);
+	    }
 	},
     },    
 );

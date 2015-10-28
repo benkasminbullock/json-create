@@ -7,7 +7,32 @@ require Exporter;
 );
 use warnings;
 use strict;
-our $VERSION = '0.06';
+our $VERSION = '0.06_01';
 require XSLoader;
 XSLoader::load ('JSON::Create', $VERSION);
+
+sub set_fformat
+{
+    my ($obj, $fformat) = @_;
+    if (! $fformat) {
+	$obj->set_fformat_unsafe (0);
+	return;
+    }
+    if ($fformat =~ /^%(?:(?:([0-9]+)?(?:\.([0-9]+)?)?)?[fFgGeE])$/) {
+	my $d1 = $1;
+	my $d2 = $2;
+	if ((defined ($d1) && $d1 > 20) || (defined ($d2) && $d2 > 20)) {
+	    warn "Format $fformat is too long";
+	    $obj->set_fformat_unsafe (0);
+	}
+	else {
+	    $obj->set_fformat_unsafe ($fformat);
+	}
+    }
+    else {
+	warn "Format $fformat is not OK for floating point numbers";
+	$obj->set_fformat_unsafe (0);
+    }
+}
+
 1;

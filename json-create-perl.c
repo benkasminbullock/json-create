@@ -29,6 +29,55 @@ typedef enum {
 }
 json_create_status_t;
 
+#define BUFSIZE 0x4000
+
+/* MARGIN is the size of the "spillover" area where we can print
+   numbers or Unicode UTF-8 whole characters (runes) into the buffer
+   without having to check the printed length after each byte. */
+
+#define MARGIN 0x40
+
+typedef struct json_create {
+    /* The length of the input string. */
+    int length;
+    unsigned char * buffer;
+    /* Place to write the buffer to. */
+    SV * output;
+    /* Format for floating point numbers. */
+    char * fformat;
+    /* Memory leak counter. */
+    int n_mallocs;
+    /* Handlers for objects and booleans. If there are no handlers,
+       this is zero (a NULL pointer). */
+    HV * handlers;
+    /* Do any of the SVs have a Unicode flag? */
+    unsigned int unicode : 1;
+    /* Does the SV we're currently looking at have a Unicode flag? */
+    unsigned int unicode_now : 1;
+    /* Did we see non-Unicode and non-ASCII bytes? */
+    unsigned int non_unicode : 1;
+    /* Should we convert / into \/? */
+    unsigned int escape_slash : 1;
+    /* Should Unicode be upper case? */
+    unsigned int unicode_upper : 1;
+    /* Should we escape all non-ascii? */
+    unsigned int unicode_escape_all : 1;
+}
+json_create_t;
+
+/* Check the length of the buffer, and if we don't have more than
+   MARGIN bytes left to write into, then we put "jc->buffer" into the
+   Perl scalar "jc->output" via "json_create_buffer_fill". We always
+   want to be at least MARGIN bytes from the end of "jc->buffer" after
+   every write operation so that we always have room to put a number
+   or a UTF-8 "rune" in the buffer without checking the length
+   excessively. */
+
+#define CHECKLENGTH				\
+    if (jc->length >= BUFSIZE - MARGIN) {	\
+	CALL (json_create_buffer_fill (jc));	\
+    }
+
 static int
 perl_error_handler (const char * file, int line_number, const char * msg, ...)
 {
@@ -70,46 +119,6 @@ static int (* json_create_error_handler) (const char * file, int line_number, co
 	    }							\
 	    return status;					\
 	}							\
-    }
-
-#define BUFSIZE 0x4000
-
-/* MARGIN is the size of the "spillover" area where we can print
-   numbers or Unicode UTF-8 whole characters (runes) into the buffer
-   without having to check the printed length after each byte. */
-
-#define MARGIN 0x40
-
-typedef struct json_create {
-    /* The length of the input string. */
-    int length;
-    unsigned char buffer[BUFSIZE];
-    /* Place to write the buffer to. */
-    SV * output;
-    /* Format for floating point numbers. */
-    char * fformat;
-    /* Memory leak counter. */
-    int n_mallocs;
-    /* Do any of the SVs have a Unicode flag? */
-    unsigned int unicode : 1;
-    /* Does the SV we're currently looking at have a Unicode flag? */
-    unsigned int unicode_now : 1;
-    /* Did we see non-Unicode and non-ASCII bytes? */
-    unsigned int non_unicode : 1;
-}
-json_create_t;
-
-/* Check the length of the buffer, and if we don't have more than
-   MARGIN bytes left to write into, then we put "jc->buffer" into the
-   Perl scalar "jc->output" via "json_create_buffer_fill". We always
-   want to be at least MARGIN bytes from the end of "jc->buffer" after
-   every write operation so that we always have room to put a number
-   or a UTF-8 "rune" in the buffer without checking the length
-   excessively. */
-
-#define CHECKLENGTH				\
-    if (jc->length >= BUFSIZE - MARGIN) {	\
-	CALL (json_create_buffer_fill (jc));	\
     }
 
 /* Everything else in this file is ordered from callee at the top to
@@ -214,22 +223,30 @@ add_str_len (json_create_t * jc, const char * s, unsigned int slen)
 
 #define ADD(x) CALL (add_str_len (jc, x, strlen (x)));
 
+static const char *uc_hex = "0123456789ABCDEF";
+static const char *lc_hex = "0123456789ABCDEF";
 
 static INLINE json_create_status_t
 add_one_u (json_create_t * jc, unsigned int u)
 {
     char * spillover;
-    int addlength;
-    addlength = 0;
+    const char * hex;
+    hex = lc_hex;
+    if (jc->unicode_upper) {
+	hex = uc_hex;
+    }
     spillover = (char *) (jc->buffer) + jc->length;
     spillover[0] = '\\';
     spillover[1] = 'u';
-    addlength += 2;
-    /* In the case that we want to Unicode-escape everything, this
-       would be a good place to soup-up. The below code is
-       inefficient. */
-    addlength += snprintf (spillover + addlength, 5, "%04x", u);
-    jc->length += addlength;
+    // Method poached from https://metacpan.org/source/CHANSEN/Unicode-UTF8-0.60/UTF8.xs#L196
+    spillover[5] = hex[u & 0xf];
+    u >>= 4;
+    spillover[4] = hex[u & 0xf];
+    u >>= 4;
+    spillover[3] = hex[u & 0xf];
+    u >>= 4;
+    spillover[2] = hex[u & 0xf];
+    jc->length += 6;
     CHECKLENGTH;
     return json_create_ok;
 }
@@ -301,6 +318,9 @@ json_create_add_key_len (json_create_t * jc, const unsigned char * key, STRLEN k
 	    }
 	    else if (c == '\\') {
 		ADD ("\\\\");
+	    }
+	    else if (c == '/' && jc->escape_slash) {
+		ADD ("\\/");
 	    }
 	    else {
 		CALL (add_char (jc, c));
@@ -684,6 +704,60 @@ is_regexp (pTHX_ SV* sv)
     }							\
     return json_create_unknown_type
 
+static json_create_status_t
+json_create_handle_object (json_create_t * jc, SV * input, SV * r)
+{
+    const char * objtype;
+    /* The second argument to sv_reftype is true if we
+       look it up in the object table, false
+       otherwise. Undocumented, reported as
+       https://rt.perl.org/Ticket/Display.html?id=126469. */
+    objtype = sv_reftype (r, 1);
+    if (objtype) {
+	SV ** sv_ptr;
+	I32 olen;
+	olen = strlen (objtype);
+	fprintf (stderr, "Faster, Pussycat, %s %ld.\n", objtype, olen);
+//	sv_ptr = hv_fetch (jc->handlers, "tosspot", strlen("tosspot"), 0);
+	sv_ptr = hv_fetch (jc->handlers, objtype, olen, 0);
+	if (sv_ptr) {
+	    char * pv;
+	    STRLEN pvlen;
+	    pv = SvPV (*sv_ptr, pvlen);
+	    fprintf (stderr, "Found it, value is %s.\n", pv);
+	    if (pvlen == strlen ("bool") &&
+		strncmp (pv, "bool", 4) == 0) {
+		if (SvTRUE (r)) {
+		    ADD ("true");
+		}
+		else {
+		    ADD ("false");
+		}
+	    }
+	    
+	}
+	else {
+	    I32 hvnum;
+SV * s;
+ char * key;
+I32 retlen;
+	    fprintf (stderr, "Nothing in handlers for %s.\n", objtype);
+	    hvnum = hv_iterinit (jc->handlers);
+
+fprintf (stderr, "There are %ld keys in handlers.\n", hvnum);
+while (1) {
+s = hv_iternextsv (jc->handlers, & key, & retlen);
+if (! s) {
+break;
+}
+fprintf (stderr, "%s: %s\n", key, SvPV_nolen (s));
+}
+	    CALL (json_create_add_string (jc, input));
+	}
+    }
+    return json_create_ok;
+}
+
 /* This is the core routine, it is called recursively as hash values
    and array values containing array or hash references are
    handled. */
@@ -717,7 +791,12 @@ json_create_recursively (json_create_t * jc, SV * input)
 	    break;
 
 	case SVt_PVMG:
-	    CALL (json_create_add_string (jc, input));
+	    if (sv_isobject (input) && jc->handlers) {
+		CALL (json_create_handle_object (jc, input, r));
+	    }
+	    else {
+		CALL (json_create_add_string (jc, input));
+	    }
 	    break;
 
 	case SVt_PVGV:
@@ -812,11 +891,15 @@ json_create_recursively (json_create_t * jc, SV * input)
 static INLINE SV *
 json_create_run (json_create_t * jc, SV * input)
 {
+    unsigned char buffer[BUFSIZE];
+
     /* Set up all the transient variables for reading. */
 
     /* "jc.buffer" is dirty here, we have not initialized it, we are
        just writing to uninitialized stack memory. "jc.length" is the
        only thing we know is OK at this point. */
+    jc->buffer = buffer;
+
     jc->length = 0;
     /* Tell json_create_buffer_fill that it needs to allocate an
        SV. */
@@ -865,9 +948,21 @@ json_create_run (json_create_t * jc, SV * input)
 static SV *
 json_create (SV * input)
 {
-    json_create_t jc;
+    /* With all the options, this really needs to be blanked out. Thus
+       "buffer" is moved from being inside "jc" to being inside
+       "json_create_run" above. */
+    json_create_t jc = {0};
+
+    /* Set up the default options. */
+
     /* Floating point number format. */
     jc.fformat = 0;
+    /* Escape slash. */
+    jc.escape_slash = 0;
+
+    jc.unicode_escape_all = 0;
+    jc.handlers = 0;
+
     return json_create_run (& jc, input);
 }
 
@@ -920,11 +1015,20 @@ json_create_set_fformat (json_create_t * jc, SV * fformat)
     jc->fformat[fflen] = '\0';
     return json_create_ok;
 }
-    
+
 static json_create_status_t
 json_create_free (json_create_t * jc)
 {
     CALL (json_create_free_fformat (jc));
+
+    if (jc->handlers) {
+	SvREFCNT_dec ((SV *) jc->handlers);
+	jc->handlers = 0;
+	jc->n_mallocs--;
+    }
+
+    /* Finished, check we have no leaks before freeing. */
+
     jc->n_mallocs--;
     if (jc->n_mallocs != 0) {
 	fprintf (stderr, "%s:%d: n_mallocs = %d\n",

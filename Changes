@@ -1,3 +1,6 @@
+0.06_01 2015-10-28
+* More flexible formatting for floating point numbers
+
 0.06 2015-10-27
 * More tests and benchmarks for floating point
 * Fixes bug with ASCII control characters

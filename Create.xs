@@ -55,9 +55,39 @@ OUTPUT:
 	RETVAL
 
 void
-set_fformat (jc, fformat)
+set_fformat_unsafe (jc, fformat)
 	JSON::Create jc;
 	SV * fformat;
 CODE:
 	PERLJCCALL (json_create_set_fformat (jc, fformat));
 OUTPUT:
+
+void
+escape_slash (jc, onoff)
+	JSON::Create jc;
+	SV * onoff;
+CODE:
+	jc->escape_slash = SvTRUE (onoff) ? 1 : 0;
+
+void
+unicode_upper (jc, onoff)
+	JSON::Create jc;
+	SV * onoff;
+CODE:
+	jc->unicode_upper = SvTRUE (onoff) ? 1 : 0;
+
+void
+unicode_escape_all (jc, onoff)
+	JSON::Create jc;
+	SV * onoff;
+CODE:
+	jc->unicode_escape_all = SvTRUE (onoff) ? 1 : 0;
+
+void
+set_handlers (jc, handlers)
+	JSON::Create jc
+	HV * handlers
+CODE:
+	SvREFCNT_inc ((SV*) handlers);
+	jc->n_mallocs++;
+	jc->handlers = handlers;

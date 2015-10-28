@@ -7,10 +7,11 @@ JSON::Create - turn a Perl variable into JSON
 
 =head1 SYNOPSIS
 
-    use JSON::Create 'create_json';
-    my %hash = (a => b, c => d);
-    my $json = create_json (\%hash);
-    # Now $json contains '{"a":"b","c":"d"}', or similar.
+[% INCLUDE "synopsis.pl" | xtidy %]
+
+produces
+
+[% INCLUDE "synopsis-out.txt" | xtidy %]
 
 =head1 DESCRIPTION
 
@@ -66,14 +67,21 @@ L</RFC 7159> for details of JSON's rules for strings.
 Bytes of value less than 0x20 are converted into the appropriate JSON
 escapes, either the whitespace escapes \b (backspace) \r, \t, \n, and
 \f, or the form \u0001 for other control characters. The backslash is
-written as \\ and double quotes are written as \". The forward slash,
-/, is not escaped. Unicode values are not escaped.
+written as \\ and double quotes are written as \". 
 
 [% INCLUDE "weirdstring.pl" | xtidy %]
 
 outputs
 
 [% INCLUDE "weirdstring-out.txt" | xtidy %]
+
+By default, the forward slash, /, known as "solidus" in the JSON
+specification, is not escaped. If you need to escape forward slashes,
+create a JSON::Create object with L</new>, set it to escape slashes
+with L</escape_slash>, then create the JSON with L</run> rather than
+L</create_json>.
+
+Unicode values are not escaped.
 
 =head3 Integers
 
@@ -83,8 +91,10 @@ Perl as an integer, Perl may interpret to be a floating point number.
 =head3 Floating point numbers
 
 Finite floating point numbers are printed using printf formatting via
-C<"%g">. There is currently no way to increase the precision of the
-number-printing beyond the default six-digit precision. See L</BUGS>.
+C<"%g">. You can alter the format used to print floating point numbers
+by creating an object with L</new>, setting the format with
+L</set_fformat>, and creating the json with L</run> rather than
+L</create_json>.
 
 NaN (not a number) is converted to the string C<"nan">, the letters
 C<nan> surrounded by double quotes. Similarly, positive and negative
@@ -144,6 +154,70 @@ version.
 A code reference in the input causes the entire return value to be the
 undefined value.
 
+=head1 METHODS
+
+If you want to alter the format of the output from the default, it's
+necessary to create an object and then set the defaults on that
+object.
+
+=head2 new
+
+    my $jc = JSON::Create->new ();
+
+Create a new "JSON::Create" object.
+
+=head2 run
+
+    my $json = $jc->run ($input);
+
+This does exactly the same thing as L</create_json>, unless you have
+altered the output format.
+
+=head2 Methods for formatting the output
+
+=head3 escape_slash
+
+    $jc->escape_slash (1);
+
+Call this with a true value to make the slash (known as the "solidus"
+in the JSON specification) be escaped with a backslash. Call this with
+any false value to make the slash not be escaped (the default
+behaviour).
+
+[% INCLUDE "escape-slash.pl" | xtidy %]
+
+outputs
+
+[% INCLUDE "escape-slash-out.txt" | xtidy %]
+
+=head3 set_fformat
+
+    $jc->set_fformat ('%e');
+
+This sets the printf-style format string used to print floating point
+numbers. This is validated and a warning printed if the format cannot
+be used. The format is also restricted to a maximum length to prevent
+buffer overflows within the module.
+
+[% INCLUDE "set-fformat.pl" | xtidy %]
+
+outputs
+
+[% INCLUDE "set-fformat-out.txt" | xtidy %]
+
+=head3 unicode_escape_all
+
+Call this with a true value to make all Unicode characters be escaped
+into the \u3000 format. (Not implemented yet.)
+
+=head3 unicode_upper
+
+    $jc->unicode_upper (1);
+
+Call this with a true value to make Unicode escapes use upper case
+hexadecimal. Call this with a false value to revert to the default
+behaviour. This isn't tested yet.
+
 =head1 EXPORTS
 
 The module exports nothing except by request. One function,
@@ -191,9 +265,6 @@ unmarked strings.
 There is currently no support for booleans or Perl objects beyond the
 default stringification.
 
-There is currently no way to specify the precision of floating point
-numbers.
-
 There is currently no facility to add whitespace to the output JSON.
 
 =head1 PERFORMANCE
@@ -225,7 +296,7 @@ details.
 
 The exact time I've spent making this module is recorded in the file
 F<timesheet.txt> in the top directory of the distribution. At the time
-of version 0.06, I've spent 19 hours and 12 minutes working on this.
+of version 0.06_01, I've spent 22 hours and 29 minutes working on this.
 
 The module is currently in use everywhere that I need to generate JSON
 within Perl. However, I don't use Perl objects very much, and so far I

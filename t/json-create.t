@@ -77,9 +77,9 @@ sub new
 package main;
 
 my $babibubebo = Ba::Bi::Bu::Be::Bo->new ();
-my $zoffixznet = {"babibubebo" => $babibubebo};
+my $zilogz80 = {"babibubebo" => $babibubebo};
 
-run ($zoffixznet, qr/\"Ba::Bi::Bu::Be::Bo=SCALAR\(.*?\)\"/);
+run ($zilogz80, qr/\"Ba::Bi::Bu::Be::Bo=SCALAR\(.*?\)\"/);
 
 # Hash to numbers.
 
