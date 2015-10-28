@@ -7,7 +7,7 @@ require Exporter;
 );
 use warnings;
 use strict;
-our $VERSION = '0.06_01';
+our $VERSION = '0.06_02';
 require XSLoader;
 XSLoader::load ('JSON::Create', $VERSION);
 
@@ -33,6 +33,16 @@ sub set_fformat
 	warn "Format $fformat is not OK for floating point numbers";
 	$obj->set_fformat_unsafe (0);
     }
+}
+
+sub bool
+{
+    my ($obj, @list) = @_;
+    my %handlers;
+    for my $item (@list) {
+	$handlers{$item} = 'bool';
+    }
+    $obj->set_handlers (\%handlers);
 }
 
 1;

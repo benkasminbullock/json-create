@@ -111,8 +111,9 @@ Undefined values are mapped to the JSON literal "null".
 
 =head3 Booleans
 
-There is no way to produce booleans (JSON "true" and "false"
-literals). See L</BUGS>.
+The default is to ignore booleans. Experimentally, there is an
+interface to convert objects to C<true> or C<false> literals within
+the JSON. See L</bool> below.
 
 =head3 Unicode escapes
 
@@ -174,6 +175,21 @@ This does exactly the same thing as L</create_json>, unless you have
 altered the output format.
 
 =head2 Methods for formatting the output
+
+=head3 bool
+
+    $jc->bool ('boolean');
+
+Given a list of object types, it will convert objects of these types
+into the JSON literals C<true> or C<false> depending on whether Perl
+thinks they're true or false. (This interface is experimental, and may
+change without notice.)
+
+[% INCLUDE "boolean.pl" | xtidy %]
+
+outputs
+
+[% INCLUDE "boolean-out.txt" | xtidy %]
 
 =head3 escape_slash
 

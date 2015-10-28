@@ -88,6 +88,19 @@ set_handlers (jc, handlers)
 	JSON::Create jc
 	HV * handlers
 CODE:
+	if (jc->handlers) {
+		SvREFCNT_dec ((SV*) jc->handlers);
+		jc->handlers = 0;
+	}
 	SvREFCNT_inc ((SV*) handlers);
 	jc->n_mallocs++;
 	jc->handlers = handlers;
+
+HV *
+get_handlers (jc, handlers)
+	JSON::Create jc
+CODE:
+	RETVAL = jc->handlers;
+OUTPUT:
+	RETVAL
+

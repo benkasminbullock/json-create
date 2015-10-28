@@ -704,6 +704,8 @@ is_regexp (pTHX_ SV* sv)
     }							\
     return json_create_unknown_type
 
+//#define DEBUGOBJ
+
 static json_create_status_t
 json_create_handle_object (json_create_t * jc, SV * input, SV * r)
 {
@@ -716,15 +718,18 @@ json_create_handle_object (json_create_t * jc, SV * input, SV * r)
     if (objtype) {
 	SV ** sv_ptr;
 	I32 olen;
+#ifdef DEBUGOBJ
+	fprintf (stderr, "Have found an object of type %s.\n", objtype);
+#endif
 	olen = strlen (objtype);
-	fprintf (stderr, "Faster, Pussycat, %s %ld.\n", objtype, olen);
-//	sv_ptr = hv_fetch (jc->handlers, "tosspot", strlen("tosspot"), 0);
 	sv_ptr = hv_fetch (jc->handlers, objtype, olen, 0);
 	if (sv_ptr) {
 	    char * pv;
 	    STRLEN pvlen;
 	    pv = SvPV (*sv_ptr, pvlen);
-	    fprintf (stderr, "Found it, value is %s.\n", pv);
+#ifdef DEBUGOBJ
+	    fprintf (stderr, "Have found a handler %s for %s.\n", pv, objtype);
+#endif
 	    if (pvlen == strlen ("bool") &&
 		strncmp (pv, "bool", 4) == 0) {
 		if (SvTRUE (r)) {
@@ -734,24 +739,40 @@ json_create_handle_object (json_create_t * jc, SV * input, SV * r)
 		    ADD ("false");
 		}
 	    }
-	    
+	    else {
+		/* It's an object, it's in our handlers, but we don't
+	       have any code to deal with it, so we'll print an error
+	       and then stringify it. */
+		if (JCEH) {
+		    (*JCEH) (__FILE__, __LINE__, "Unhandled handler %s.\n",
+			     pv);
+		    goto nothandled;
+		}
+	    }
 	}
 	else {
+#ifdef DEBUGOBJ
+	    /* Leaving this debugging code here since this is liable
+	       to change a lot. */
 	    I32 hvnum;
-SV * s;
- char * key;
-I32 retlen;
+	    SV * s;
+	    char * key;
+	    I32 retlen;
 	    fprintf (stderr, "Nothing in handlers for %s.\n", objtype);
 	    hvnum = hv_iterinit (jc->handlers);
 
-fprintf (stderr, "There are %ld keys in handlers.\n", hvnum);
-while (1) {
-s = hv_iternextsv (jc->handlers, & key, & retlen);
-if (! s) {
-break;
-}
-fprintf (stderr, "%s: %s\n", key, SvPV_nolen (s));
-}
+	    fprintf (stderr, "There are %ld keys in handlers.\n", hvnum);
+	    while (1) {
+		s = hv_iternextsv (jc->handlers, & key, & retlen);
+		if (! s) {
+		    break;
+		}
+		fprintf (stderr, "%s: %s\n", key, SvPV_nolen (s));
+	    }
+#endif /* 0 */
+	    /* It's an object, but it's not in our handlers, so we'll
+	       just stringify it. */
+	nothandled:
 	    CALL (json_create_add_string (jc, input));
 	}
     }
@@ -791,6 +812,9 @@ json_create_recursively (json_create_t * jc, SV * input)
 	    break;
 
 	case SVt_PVMG:
+#ifdef DEBUGOBJ
+	    fprintf (stderr, "monkey monkey.\n");
+#endif 
 	    if (sv_isobject (input) && jc->handlers) {
 		CALL (json_create_handle_object (jc, input, r));
 	    }

@@ -26,7 +26,7 @@ my $count = 1000;
 # The results seem to stabilize better if we run the inner loop a
 # number of times. Still, unfortunately, setting this very large
 # doesn't stabilize the results completely.
-my $inner = 1000;
+my $inner = 3000;
 
 print "Versions used:\n\n";
 my @modules = qw/Cpanel::JSON::XS JSON::XS JSON::Create/;
