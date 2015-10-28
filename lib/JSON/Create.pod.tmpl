@@ -24,7 +24,12 @@ numbers, nested hashes and arrays.
 
     my $json = create_json (\%hash);
 
-Convert a Perl hash or array into JSON.
+Convert a Perl hash reference or array reference into JSON. The return
+value is the output JSON.
+
+Details of the conversion of each type are given in
+L</CONVERSIONS>. If you want to alter the default conversions, you
+need to make an object with L</new>.
 
 =head1 CONVERSIONS
 
@@ -177,9 +182,12 @@ generate JSON with this.
     my $json = $jc->run ($input);
 
 This does exactly the same thing as L</create_json>, unless you have
-altered the output format.
+altered the output format. The return value is the output JSON.
 
 =head2 Methods for formatting the output
+
+These methods work on the object created with L</new> to format the
+output JSON in a different way from the default.
 
 =head3 bool
 
@@ -195,6 +203,23 @@ change without notice.)
 outputs
 
 [% INCLUDE "boolean-out.txt" | xtidy %]
+
+Interoperability with the following Perl modules can be confirmed by
+running F<t/bool.t> in the distribution:
+
+=over
+
+=item L<boolean>
+
+=item L<JSON::Tiny>
+
+=item L<JSON::PP>
+
+=back
+
+More modules will be added to this list as time permits. (So far,
+ironically, only L<JSON::Parse> has proved inoperable with this
+module. See L</BUGS>.)
 
 =head3 escape_slash
 
@@ -216,10 +241,17 @@ outputs
     $jc->obj ('Zilog::Z80' => sub { my ($obj) = @_; print "\"Z80\""; });
 
 With this method you can register JSON generators for your Perl
-objects. Call it with a hash with keys of object names and and values
-of code references. The output of your method is passed through to the
-output string completely unaltered. If you want to have it checked for
-validity, use the method L</validate>.
+objects. When JSON::Create finds your object, it will call the method
+you have supplied.
+
+The format is to call C<obj> with a hash with the keys being object
+names and the values being code references. The return value of your
+method should be a single value, a string containing your object's
+JSON encoding.
+
+The output of your method is passed through to the output string
+completely unaltered. If you want to have your JSON output checked for
+validity, you can switch on validation using the method L</validate>.
 
 [% INCLUDE "zilog.pl" | xtidy %]
 
@@ -245,7 +277,7 @@ outputs
 =head3 unicode_escape_all
 
 Call this with a true value to make all Unicode characters be escaped
-into the \u3000 format. (Not implemented yet.)
+into the \u3000 format. (Not implemented yet, see L</BUGS>.)
 
 =head3 unicode_upper
 
@@ -254,7 +286,7 @@ into the \u3000 format. (Not implemented yet.)
 Call this with a true value to make Unicode escapes use upper case
 hexadecimal. Call this with a false value to revert to the default
 behaviour. This isn't tested yet, because the Unicode validation is
-not yet implemented.
+not yet implemented, see L</BUGS>.
 
 =head3 validate
 
@@ -304,13 +336,19 @@ write these two modules (under "HISTORY").
 
 =head1 BUGS
 
-JSON is required to be in Unicode, but it's possible to pass
-non-Unicode strings through this module by switching off the Perl
-UTF-8 flag everywhere, since unmarked binary bytes are currently not
-validated independent of Perl's validation, which does not apply to
-unmarked strings.
+The planned Unicode support (byte-by-byte checking) is not yet fully
+implemented. For example, JSON is required to be in Unicode, but it's
+possible to pass non-Unicode strings through this module by switching
+off the Perl UTF-8 flag everywhere, since unmarked binary bytes are
+currently not validated independent of Perl's validation, which does
+not apply to unmarked strings. Also, full escaping and escaping of
+C<\u2028> and C<\u2029> are not implemented yet.
 
 There is currently no facility to add whitespace to the output JSON.
+
+L<JSON::Parse>'s boolean types cannot correctly interoperate with
+L</bool>. This is a bug in JSON::Parse.
+
 
 =head1 PERFORMANCE
 
@@ -337,12 +375,12 @@ details.
 
 The exact time I've spent making this module is recorded in the file
 F<timesheet.txt> in the top directory of the distribution. At the time
-of version 0.06_01, I've spent 22 hours and 29 minutes working on this.
+of version 0.06_04, I've spent 1 day, 2 hours and 5 minutes working on
+this.
 
 The module is currently in use everywhere that I need to generate JSON
-within Perl. However, I don't use Perl objects very much, and so far I
-don't have a specific need for booleans, so support for these is
-lagging. Patches are welcome.
+within Perl. However, I would suggest caution in switching to this
+module since not all parts are implemented yet.
 
 [% INCLUDE "author" %]
 [% INCLUDE "terminology" %]

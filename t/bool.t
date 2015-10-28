@@ -12,9 +12,7 @@ binmode STDERR, ":encoding(utf8)";
 use JSON::Create 'create_json';
 use JSON::Parse 'parse_json';
 
-# No matter how stupid the name you think of, the next thing you know,
-# some dweeb will release this as a genuine module. Case in point
-# "Perl::Build".
+# A name unlikely to clash with a real module.
 
 package Ba::Bi::Bu::Be::Bo;
 
@@ -41,8 +39,8 @@ $jc->bool (qw/Ba::Bi::Bu::Be::Bo/);
 my $thing = {monkey => $babibubebo, zilog => $z80,};
 my $stuff = $jc->run ($thing);
 
-like ($stuff, qr/"monkey":true\b/);
-like ($stuff, qr/"zilog":false\b/);
+like ($stuff, qr/"monkey":true\b/, "Self-created true");
+like ($stuff, qr/"zilog":false\b/, "Self-created false");
 
 SKIP: {
     # https://metacpan.org/source/GRIAN/Storable-AMF-1.08/t/67-boolean-real.t#L1
@@ -51,7 +49,7 @@ SKIP: {
 	boolean->import(":all");
     };
     if ($@) {
-	skip "Your pasokon doesn't have 'boolean' installed.\n", 2;
+	skip "boolean is not installed.\n", 2;
     }
     my $ingy = JSON::Create->new ();
     $ingy->bool ('boolean');
@@ -65,8 +63,45 @@ SKIP: {
 	'Falk' => boolean::true(),
     };
     my $ingyout = $ingy->run ($dotnet);
-    like ($ingyout, qr/"Peter":false\b/);
-    like ($ingyout, qr/"Falk":true\b/);
+    like ($ingyout, qr/"Peter":false\b/, "boolean false");
+    like ($ingyout, qr/"Falk":true\b/, "boolean true");
+};
+
+
+SKIP: {
+    eval {
+	require JSON::Tiny;
+    };
+    if ($@) {
+	skip "JSON::Tiny is not installed.\n", 2;
+    }
+    my $davido = JSON::Create->new ();
+    $davido->bool ('JSON::Tiny::_Bool');
+    my $minij = {
+	'salt' => JSON::Tiny::true(),
+	'lake' => JSON::Tiny::false(),
+    };
+    my $saltlake = $davido->run ($minij);
+    like ($saltlake, qr/"salt":true/, "JSON::Tiny true");
+    like ($saltlake, qr/"lake":false/, "JSON::Tiny false");
+};
+
+SKIP: {
+    eval {
+	require JSON::PP;
+    };
+    if ($@) {
+	skip "JSON::PP is not installed.\n", 2;
+    }
+    my $makamaka = JSON::Create->new ();
+    $makamaka->bool ('JSON::PP::Boolean');
+    my $pp = {
+	'don' => $JSON::PP::true,
+	'zoko' => $JSON::PP::false,
+    };
+    my $ppout = $makamaka->run ($pp);
+    like ($ppout, qr/"don":true/, "JSON::PP true");
+    like ($ppout, qr/"zoko":false/, "JSON::PP false");
 };
 
 
