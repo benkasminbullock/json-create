@@ -217,7 +217,15 @@ outputs
 
 With this method you can register JSON generators for your Perl
 objects. Call it with a hash with keys of object names and and values
-of code references. See also L</validate>.
+of code references. The output of your method is passed through to the
+output string completely unaltered. If you want to have it checked for
+validity, use the method L</validate>.
+
+[% INCLUDE "zilog.pl" | xtidy %]
+
+produces
+
+[% INCLUDE "zilog-out.txt" | xtidy %]
 
 =head3 set_fformat
 
@@ -302,9 +310,6 @@ UTF-8 flag everywhere, since unmarked binary bytes are currently not
 validated independent of Perl's validation, which does not apply to
 unmarked strings.
 
-There is currently no support for booleans or Perl objects beyond the
-default stringification.
-
 There is currently no facility to add whitespace to the output JSON.
 
 =head1 PERFORMANCE
@@ -322,10 +327,6 @@ L<JSON::XS> and L<Cpanel::JSON::XS>. Outputs look like this:
 This only compares a few simple cases in which the output is
 demonstrably correct. Also, at least on my computer, the numbers seem
 to vary wildly from one test to another.
-
-JSON::Create doesn't currently handle Perl objects beyond the default
-stringification, or produce booleans, but adding these functionalities
-should have little to no effect on the above performance.
 
 =head1 HISTORY
 
