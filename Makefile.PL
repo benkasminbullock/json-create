@@ -18,8 +18,17 @@ my $repo = "https://$github";
 
 my $tr = {
     'Test::More' => '0',
-    # Freaky-deaky behaviour is new for JSON::Parse.
-    'JSON::Parse' => '0.36_01',
+
+    # The internal handling of "true" and "false" values changed from
+    # version 0.36 to version 0.37 of JSON::Parse for the sake of
+    # simpler round-trip compatibility with JSON::Create. The tests in
+    # this module assume we are using JSON::Parse's new "true" and
+    # "false" values.
+
+    # This only affects the file t/json-parse.t, the other tests are
+    # unaffected.
+
+    'JSON::Parse' => '0.37',
 };
 
 my %WriteMakefileArgs = (
