@@ -11,5 +11,4 @@ perl:
 - '5.8'
 
 install:
-- cpanm --quiet --notest
-  JSON::Parse
+- cpanm --quiet --installdeps --notest
