@@ -824,7 +824,7 @@ json_create_handle_ref (json_create_t * jc, SV * input)
     return json_create_ok;
 }
 
-static json_create_status_t
+static INLINE json_create_status_t
 json_create_handle_object (json_create_t * jc, SV * input)
 {
     const char * objtype;
@@ -928,6 +928,14 @@ json_create_recursively (json_create_t * jc, SV * input)
 	/* We were told to add an undefined value, so put the literal
 	   'null' (without quotes) at the end of "jc" then return. */
 	ADD ("null");
+	return json_create_ok;
+    }
+    if (input == &PL_sv_yes) {
+	ADD ("true");
+	return json_create_ok;
+    }
+    if (input == &PL_sv_no) {
+	ADD ("false");
 	return json_create_ok;
     }
     if (SvROK (input)) {

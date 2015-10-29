@@ -7,7 +7,7 @@ require Exporter;
 );
 use warnings;
 use strict;
-our $VERSION = '0.06_03';
+our $VERSION = '0.06_04';
 require XSLoader;
 XSLoader::load ('JSON::Create', $VERSION);
 

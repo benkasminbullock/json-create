@@ -18,7 +18,8 @@ my $repo = "https://$github";
 
 my $tr = {
     'Test::More' => '0',
-    'JSON::Parse' => '0.35',
+    # Freaky-deaky behaviour is new for JSON::Parse.
+    'JSON::Parse' => '0.36_01',
 };
 
 my %WriteMakefileArgs = (
