@@ -761,8 +761,7 @@ json_create_call_to_json (json_create_t * jc, SV * cv, SV * r)
     PUTBACK;
     count = call_sv (cv, 0);
     if (count != 1) {
-	fprintf (stderr, "not one but %ld .\n", count);
-	return json_create_ok;
+	warn ("Wrong number of arguments %d from user callback: should be 1", count);
     }
     json = POPs;
     SvREFCNT_inc (json);

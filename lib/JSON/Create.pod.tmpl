@@ -239,6 +239,12 @@ depends on L<JSON::PP> and uses the type C<JSON::PP::Boolean> for its
 true and false values. Older versions used their own type,
 C<Mojo::JSON::_Bool>.
 
+JSON::Create's tests for Mojo::JSON compatibility are currently
+commented out by default, because different versions of Mojolicious
+differ a lot in not only function names but also variable names, as
+seen above. If you want to run these tests, please edit the file
+F<t/bool.t> in the distribution.
+
 =back
 
 You can also switch on multiple modules using a list:

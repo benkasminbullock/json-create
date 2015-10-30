@@ -1,4 +1,7 @@
-0.07 2015-10-28
+0.08 2015-10-30
+* Disable compatibility testing against Mojo::JSON.
+
+0.07 2015-10-29
 * More flexible formatting for floating point numbers
 * Experimental support for booleans
 * User option to escape / into \/.
