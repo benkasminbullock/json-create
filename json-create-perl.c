@@ -718,25 +718,18 @@ json_create_validate_user_json (json_create_t * jc, SV * json)
     PUSHMARK(SP);
     XPUSHs (sv_2mortal (newSVsv (json)));
     PUTBACK;
-/*
-    fprintf (stderr, "%s:%d: validating %s.\n", __FILE__, __LINE__,
-	     SvPV_nolen (json));
-*/
     call_pv ("JSON::Parse::assert_valid_json",
 	     G_EVAL|G_DISCARD);
     FREETMPS;
     LEAVE;  
-//    fprintf (stderr, "%s:%d: validating.\n", __FILE__, __LINE__);
     error = get_sv ("@", 0);
     if (! error) {
 	return json_create_ok;
     }
-//    fprintf (stderr, "%s:%d: validating %p.\n", __FILE__, __LINE__, error);
     if (SvOK (error) && SvCUR (error) > 0) {
-//	fprintf (stderr, "%s:%d: validating.\n", __FILE__, __LINE__);
-	croak ("JSON::Parse::assert_valid_json failed for '%s': %s", SvPV_nolen (json), SvPV_nolen (error));
+	croak ("JSON::Parse::assert_valid_json failed for '%s': %s",
+	       SvPV_nolen (json), SvPV_nolen (error));
     }
-//    fprintf (stderr, "%s:%d: validating.\n", __FILE__, __LINE__);
     return json_create_ok;
 }
 
@@ -744,24 +737,24 @@ json_create_validate_user_json (json_create_t * jc, SV * json)
 static json_create_status_t
 json_create_call_to_json (json_create_t * jc, SV * cv, SV * r)
 {
-//    fprintf (stderr, "Now that's a real mother for you, yeah.\n");
     I32 count;
     SV * json;
     char * jsonc;
     STRLEN jsonl;
-// https://metacpan.org/source/AMBS/Math-GSL-0.35/swig/gsl_typemaps.i#L438
+    // https://metacpan.org/source/AMBS/Math-GSL-0.35/swig/gsl_typemaps.i#L438
     dSP;
     
     ENTER;
     SAVETMPS;
     
     PUSHMARK(SP);
-//https://metacpan.org/source/AMBS/Math-GSL-0.35/swig/gsl_typemaps.i#L482
+    //https://metacpan.org/source/AMBS/Math-GSL-0.35/swig/gsl_typemaps.i#L482
     XPUSHs(sv_2mortal(newRV(r)));
     PUTBACK;
     count = call_sv (cv, 0);
     if (count != 1) {
-	warn ("Wrong number of arguments %d from user callback: should be 1", count);
+	warn ("Wrong number of arguments %ld from user callback: should be 1",
+	      count);
     }
     json = POPs;
     SvREFCNT_inc (json);
@@ -769,7 +762,6 @@ json_create_call_to_json (json_create_t * jc, SV * cv, SV * r)
     LEAVE;  
     jsonc = SvPV (json, jsonl);
     if (jc->validate) {
-//	fprintf (stderr, "validating.\n");
 	CALL (json_create_validate_user_json (jc, json));
     }
     CALL (add_str_len (jc, jsonc, jsonl));
@@ -798,9 +790,6 @@ json_create_handle_ref (json_create_t * jc, SV * input)
 	break;
 
     case SVt_PVMG:
-#ifdef DEBUGOBJ
-	fprintf (stderr, "monkey monkey.\n");
-#endif 
 	CALL (json_create_add_string (jc, input));
 	break;
 
@@ -862,26 +851,20 @@ json_create_handle_object (json_create_t * jc, SV * input)
 		SV * what;
 		what = SvRV (*sv_ptr);
 		if (SvROK (what)) {
-//		    fprintf (stderr, "It's a ref baby.\n");
 		    what = SvRV(what);
 		}
-/*
-		fprintf (stderr, "Now what a real mother for you yeah %d.\n",
-			 SvTYPE (what));
-*/
 		switch (SvTYPE (what)) {
 		case SVt_PVCV:
 		    CALL (json_create_call_to_json (jc, what, r));
 		    break;
 		default:
-//		    fprintf (stderr, "Not code, looks like %s\n", SvPV_nolen (what));
 		    goto nothandled;
 		}
 	    }
 	    else {
 		/* It's an object, it's in our handlers, but we don't
-	       have any code to deal with it, so we'll print an error
-	       and then stringify it. */
+		   have any code to deal with it, so we'll print an
+		   error and then stringify it. */
 		if (JCEH) {
 		    (*JCEH) (__FILE__, __LINE__, "Unhandled handler %s.\n",
 			     pv);
