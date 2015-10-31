@@ -173,8 +173,9 @@ add_char (json_create_t * jc, unsigned char c)
 /* Add a nul-terminated string to "jc", up to the nul byte. This
    should not be used unless it's strictly necessary, prefer to use
    "add_str_len" instead. This is not intended to be Unicode-safe, it
-   is only to be used for strings which we know are not Unicode (for
-   example sprintf'd numbers or something). */
+   is only to be used for strings which we know do not need to be
+   checked for Unicode validity (for example sprintf'd numbers or
+   something). Basically, don't use this. */
 
 static INLINE json_create_status_t
 add_str (json_create_t * jc, const char * s)
@@ -191,7 +192,7 @@ add_str (json_create_t * jc, const char * s)
 /* Add a string "s" with length "slen" to "jc". This does not test for
    nul bytes, but just copies "slen" bytes of the string.  This is not
    intended to be Unicode-safe, it is only to be used for strings we
-   know are not Unicode. */
+   know do not need to be checked for Unicode validity. */
 
 static INLINE json_create_status_t
 add_str_len (json_create_t * jc, const char * s, unsigned int slen)
@@ -594,7 +595,7 @@ json_create_add_stringified (json_create_t * jc, SV *r)
     }
 
 /* Given a reference to a hash in "input_hv", recursively process it
-   into JSON. */
+   into JSON. "object" here means "JSON object", not "Perl object". */
 
 static INLINE json_create_status_t
 json_create_add_object (json_create_t * jc, HV * input_hv)
@@ -790,7 +791,17 @@ json_create_handle_ref (json_create_t * jc, SV * input)
 	break;
 
     case SVt_PVMG:
-	CALL (json_create_add_string (jc, input));
+	/* There are some edge cases with blessed references
+	   containing numbers which we need to handle correctly. */
+	if (SvIOK (r)) {
+	    CALL (json_create_add_integer (jc, r));
+	}
+	else if (SvNOK (r)) {
+	    CALL (json_create_add_float (jc, r));
+	}
+	else {
+	    CALL (json_create_add_string (jc, input));
+	}
 	break;
 
     case SVt_PVGV:
@@ -858,6 +869,7 @@ json_create_handle_object (json_create_t * jc, SV * input)
 		    CALL (json_create_call_to_json (jc, what, r));
 		    break;
 		default:
+		    /* Weird handler, not a code reference. */
 		    goto nothandled;
 		}
 	    }
@@ -912,6 +924,8 @@ json_create_recursively (json_create_t * jc, SV * input)
 	ADD ("null");
 	return json_create_ok;
     }
+    /* JSON::Parse inserts pointers to &PL_sv_yes and no as literal
+       "true" and "false" markers. */
     if (input == &PL_sv_yes) {
 	ADD ("true");
 	return json_create_ok;
