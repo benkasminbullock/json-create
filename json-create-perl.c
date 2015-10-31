@@ -26,6 +26,8 @@ typedef enum {
     json_create_unknown_floating_point,
     /* Bad format for floating point. */
     json_create_bad_floating_format,
+    /* */
+    json_create_unicode_bad_utf8,
 }
 json_create_status_t;
 
@@ -64,6 +66,8 @@ typedef struct json_create {
     unsigned int unicode_escape_all : 1;
     /* Should we validate user-defined JSON? */
     unsigned int validate : 1;
+    /* */
+    unsigned int no_javascript_safe : 1;
 }
 json_create_t;
 
@@ -227,7 +231,7 @@ add_str_len (json_create_t * jc, const char * s, unsigned int slen)
 #define ADD(x) CALL (add_str_len (jc, x, strlen (x)));
 
 static const char *uc_hex = "0123456789ABCDEF";
-static const char *lc_hex = "0123456789ABCDEF";
+static const char *lc_hex = "0123456789abcdef";
 
 static INLINE json_create_status_t
 add_one_u (json_create_t * jc, unsigned int u)
@@ -290,8 +294,9 @@ json_create_add_key_len (json_create_t * jc, const unsigned char * key, STRLEN k
 {
     int i;
     CALL (add_char (jc, '"'));
-    for (i = 0; i < keylen; i++) {
+    for (i = 0; i < keylen; ) {
 	unsigned char c;
+	int j = i;
 	c = key[i];
 	if (c < 0x20) {
 	    if (c == '\t') {
@@ -314,6 +319,7 @@ json_create_add_key_len (json_create_t * jc, const unsigned char * key, STRLEN k
 		   "add_one_u" not "add_u" here. */
 		CALL (add_one_u (jc, (unsigned int) c));
 	    }
+	    i++;
 	}
 	else if (c < 0x80) {
 	    if (c == '"') {
@@ -328,12 +334,78 @@ json_create_add_key_len (json_create_t * jc, const unsigned char * key, STRLEN k
 	    else {
 		CALL (add_char (jc, c));
 	    }
+	    i++;
 	}
 	else {
+	    const unsigned char * input;
+	    input = key + i;
+	    if (c >= 0xf0 && c <= 0xf4) {
+		if (jc->unicode_escape_all) {
+		    unsigned int u;
+		    u = (input[0] & 0x07) << 18
+		      | (input[1] & 0x3F) << 12
+		      | (input[2] & 0x3F) <<  6
+		      | (input[3] & 0x3F);
+		    add_u (jc, u);
+		}
+		else {
+		    CALL (add_str_len (jc, (const char *) input, 2));
+		}
+		i += 4;
+	    }
+	    else if ((c & 0xE0) == 0xE0) {
+		/* Three byte case. */
+		if (input[1] < 0x80 || input[1] > 0xBF ||
+		    input[2] < 0x80 || input[2] > 0xBF) {
+		    return json_create_unicode_bad_utf8;
+		}
+		if (! jc->no_javascript_safe &&
+		    c == 0xe2 && input[1] == 0x80 && 
+		    (input[2] == 0xa8 || input[2] == 0xa9)) {
+		    CALL (add_one_u (jc, 0x2028 + input[2] - 0xa8));
+		    i += 3;
+		}
+		else {
+		    if (jc->unicode_escape_all) {
+			unsigned int u;
+			u = (input[0] & 0x0F)<<12
+			    | (input[1] & 0x3F)<<6
+			    | (input[2] & 0x3F);
+			CALL (add_u (jc, u));
+		    }
+		    else {
+			CALL (add_str_len (jc, (const char *) input, 3));
+		    }
+		}
+		i += 3;
+	    }
+	    else if ((c & 0xC0) == 0xC0) {
+		/* Two byte case. */
+		if (input[1] < 0x80 || input[1] > 0xBF) {
+		    return json_create_unicode_bad_utf8;
+		}
+		if (jc->unicode_escape_all) {
+		    unsigned int u;
+		    u = (input[0] & 0x1F)<<6
+		      | (input[1] & 0x3F);
+		    CALL (add_u (jc, u));
+		}
+		else {
+		    CALL (add_str_len (jc, (const char *) input, 2));
+		}
+		i += 2;
+	    }
+	    else {
+		fprintf (stderr, "Strange byte %X in %s\n", c, key);
+		return json_create_unicode_bad_utf8;
+	    }
 	    if (! jc->unicode_now) {
 		jc->non_unicode = 1;
 	    }
-	    CALL (add_char (jc, c));
+	}
+	if (j == i) {
+	    fprintf (stderr, "Failed to increment %d %d\n", i, j);
+	    break;
 	}
 	/* Unicode verification switch statements copied from
 	   JSON::Parse will go here. */

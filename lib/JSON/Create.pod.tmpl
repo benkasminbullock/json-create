@@ -143,6 +143,15 @@ this does not happen, but there is also currently no validation of the
 output as being in Unicode, so binary strings can pass through without
 correction. See also L</BUGS>.
 
+=head4 U+2028 and U+2029 (JavaScript clashes)
+
+    my $out = create_json (["\x{2028}"]);
+    # $out = '["\u2028"]'
+
+JSON::Create by default escapes Unicode code points U+2028 and U+2029
+because of an issue with JavaScript compatibility. This can be
+switched off using the method L</no_javascript_safe>.
+
 =head2 Other reference types
 
 =head3 Regexes
@@ -324,17 +333,23 @@ outputs
 
 =head3 unicode_escape_all
 
+    $jc->unicode_escape_all (1);
+
 Call this with a true value to make all Unicode characters be escaped
-into the \u3000 format. (Not implemented yet, see L</BUGS>.)
+into the \u3000 format.
+
+[% INCLUDE "escape-all.pl" | xtidy %]
+
+outputs
+
+[% INCLUDE "escape-all-out.txt" | xtidy %]
 
 =head3 unicode_upper
 
     $jc->unicode_upper (1);
 
 Call this with a true value to make Unicode escapes use upper case
-hexadecimal. Call this with a false value to revert to the default
-behaviour. This isn't tested yet, because the Unicode validation is
-not yet implemented, see L</BUGS>.
+hexadecimal. See the example under L</unicode_escape_all>.
 
 =head3 validate
 
@@ -348,6 +363,20 @@ have that module installed to use this.
 If JSON::Parse is installed, and the JSON fails to validate, this will
 produce a fatal error. If JSON::Parse is not installed, it will also
 produce a fatal error, regardless of whether your JSON is valid.
+
+=head3 no_javascript_safe
+
+    $jc->no_javascript_safe (1);
+
+If called with a true value, this switches off JavaScript protection
+in the output JSON. If called with a false value, the JavaScript
+protection is switched on again.
+
+[% INCLUDE "js-safe.pl" | xtidy %]
+
+produces
+
+[% INCLUDE "js-safe-out.txt" | xtidy %]
 
 =head1 EXPORTS
 
@@ -387,14 +416,6 @@ write these two modules (under "HISTORY").
 =back
 
 =head1 BUGS
-
-The planned Unicode support (byte-by-byte checking) is not yet fully
-implemented. For example, JSON is required to be in Unicode, but it's
-possible to pass non-Unicode strings through this module by switching
-off the Perl UTF-8 flag everywhere, since unmarked binary bytes are
-currently not validated independent of Perl's validation, which does
-not apply to unmarked strings. Also, full escaping and escaping of
-C<\u2028> and C<\u2029> are not implemented yet.
 
 There is currently no facility to add whitespace to the output JSON.
 

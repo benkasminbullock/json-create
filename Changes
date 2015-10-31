@@ -1,3 +1,6 @@
+0.09_01 2015-10-31
+* Implement more complete Unicode support
+
 0.09 2015-10-31
 * Deal better with references containing numerical and string values
 

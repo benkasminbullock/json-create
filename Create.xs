@@ -91,6 +91,13 @@ CODE:
 	jc->validate = SvTRUE (onoff) ? 1 : 0;
 
 void
+no_javascript_safe (jc, onoff)
+	JSON::Create jc;
+	SV * onoff;
+CODE:
+	jc->no_javascript_safe = SvTRUE (onoff) ? 1 : 0;
+
+void
 set_handlers (jc, handlers)
 	JSON::Create jc
 	HV * handlers
