@@ -1,3 +1,6 @@
+0.09 2015-10-31
+* Deal better with references containing numerical and string values
+
 0.08 2015-10-30
 * Disable compatibility testing against Mojo::JSON.
 

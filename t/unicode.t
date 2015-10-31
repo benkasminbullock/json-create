@@ -51,5 +51,62 @@ like ($nonuout, qr/"あ":"亜"/, "key / value pair a");
 # the code when the Perl flag is switched off, otherwise we may
 # produce invalid JSON.
 
+TODO: {
+    local $TODO = 'implement default escaping of U+2028 and U+2029';
+
+    my $jc = JSON::Create->new ();
+
+    my $in2028 = "\x{2028}";
+    my $out2028 = $jc->run ($in2028);
+    is ($out2028, '\u2028');
+
+    my $in2029 = "\x{2029}";
+    my $out2029 = $jc->run ($in2029);
+    is ($out2029, '\u2029');
+};
+
+TODO: {
+    local $TODO = 'implement unicode_escape_all';
+
+    my $jc = JSON::Create->new ();
+    $jc->unicode_escape_all (1);
+    $jc->unicode_upper (0);
+
+    use utf8;
+
+    my $in = '赤ブöＡↂ';
+    my $out = $jc->run ($in);
+    is ($out, '\u8d64\u30d6\u00f6\uff21\u2100', "Unicode escaping");
+
+    $jc->unicode_upper (1);
+
+    my $out2 = $jc->run ($in);
+    is ($out2, '\u8D64\u30D6\u00F6\uFF21\u2100', "Upper case hex unicode");
+};
+
+TODO: {
+    local $TODO = 'correctly generate surrogate pairs';
+
+    my $jc = JSON::Create->new ();
+    $jc->unicode_escape_all (1);
+    $jc->unicode_upper (0);
+
+    # These are exactly the same examples as in "unicode.c", please
+    # see that code for links to where the examples come from.
+
+    my $wikipedia_1 = "\x{10437}";
+    my $out_1 = $jc->run ($wikipedia_1);
+    is ($out_1, '"\ud801\udc37"');
+
+    my $wikipedia_2 = "\x{24b62}";
+    my $out_2 = $jc->run ($wikipedia_2);
+    is ($out_2, '"\ud852\udf62"');
+
+    my $json_spec = "\x{1D11E}";
+    my $out_3 = $jc->run ($json_spec);
+    is ($out_3, '"\ud834\udd1e"');
+};
+
 done_testing ();
+
 exit;
