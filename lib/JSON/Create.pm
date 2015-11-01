@@ -7,7 +7,7 @@ require Exporter;
 );
 use warnings;
 use strict;
-our $VERSION = '0.09_01';
+our $VERSION = '0.09_02';
 require XSLoader;
 XSLoader::load ('JSON::Create', $VERSION);
 
@@ -58,8 +58,10 @@ sub obj
 sub validate
 {
     my ($obj, $value) = @_;
-    require JSON::Parse;
-    JSON::Parse->import ('assert_valid_json');
+    if ($value) {
+	require JSON::Parse;
+	JSON::Parse->import ('assert_valid_json');
+    }
     $obj->set_validate ($value);
 }
 

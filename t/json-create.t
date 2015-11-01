@@ -64,23 +64,6 @@ is ($bigneg_json, '[-1000000,2000000,-300000000]', "big negative numbers OK");
 run (undef, 'null');
 run ({'a' => undef},'{"a":null}');
 
-# The following tests the SVt_PVMG code path
-
-package Ba::Bi::Bu::Be::Bo;
-
-sub new
-{
-    my $lion = 'ライオン';
-    return bless \$lion;
-}
-
-package main;
-
-my $babibubebo = Ba::Bi::Bu::Be::Bo->new ();
-my $zilogz80 = {"babibubebo" => $babibubebo};
-
-run ($zilogz80, qr/\"Ba::Bi::Bu::Be::Bo=SCALAR\(.*?\)\"/);
-
 # Hash to numbers.
 
 my $h2n = {

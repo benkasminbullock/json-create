@@ -11,3 +11,5 @@ $jc->unicode_escape_all (1);
 print $jc->run ($in), "\n";
 $jc->unicode_upper (1);
 print $jc->run ($in), "\n";
+$jc->unicode_escape_all (0);
+print $jc->run ($in), "\n";

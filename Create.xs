@@ -120,3 +120,16 @@ CODE:
 OUTPUT:
 	RETVAL
 
+void
+code_ref_handler (jc, crh)
+	JSON::Create jc;
+	SV * crh;
+CODE:
+	if (SvTRUE (crh)) {
+	    jc->code_ref_handler = crh;
+	    SvREFCNT_inc (crh);
+	    jc->n_mallocs++;
+	}
+	else {
+	    PERLJCCALL (json_create_remove_code_handler (jc));
+	}

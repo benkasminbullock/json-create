@@ -28,6 +28,9 @@ typedef enum {
     json_create_bad_floating_format,
     /* */
     json_create_unicode_bad_utf8,
+    json_create_code_ref_found,
+    /* User's routine returned invalid stuff. */
+    json_create_invalid_user_json,
 }
 json_create_status_t;
 
@@ -52,6 +55,8 @@ typedef struct json_create {
     /* Handlers for objects and booleans. If there are no handlers,
        this is zero (a NULL pointer). */
     HV * handlers;
+    /* Code reference handler. */
+    SV * code_ref_handler;
     /* Do any of the SVs have a Unicode flag? */
     unsigned int unicode : 1;
     /* Does the SV we're currently looking at have a Unicode flag? */
@@ -114,17 +119,32 @@ static int (* json_create_error_handler) (const char * file, int line_number, co
 
 #define JCEH json_create_error_handler
 
-#define CALL(x) {						\
-	json_create_status_t status;				\
-	status = x;						\
-	if (status != json_create_ok) {				\
+#define HANDLE_STATUS(x,status) {				\
+	switch (status) {					\
+	    /* These exceptions indicate a user error. */	\
+	case json_create_unknown_type:				\
+	case json_create_code_ref_found:			\
+	case json_create_unicode_bad_utf8:			\
+	case json_create_invalid_user_json:			\
+	    break;						\
+	    							\
+	    /* All other exceptions are bugs. */		\
+	default:						\
 	    if (JCEH) {						\
 		(*JCEH) (__FILE__, __LINE__,			\
 			 "call to %s failed with status %d",	\
 			 #x, status);				\
 	    }							\
-	    return status;					\
 	}							\
+    }
+
+#define CALL(x) {							\
+	json_create_status_t status;					\
+	status = x;							\
+	if (status != json_create_ok) {					\
+	    HANDLE_STATUS (x,status);					\
+	    return status;						\
+	}								\
     }
 
 /* Everything else in this file is ordered from callee at the top to
@@ -202,15 +222,15 @@ static INLINE json_create_status_t
 add_str_len (json_create_t * jc, const char * s, unsigned int slen)
 {
     int i;
-    /* Hopefully, the compiler optimizes the following "if" statement
-       away to a true value for almost all cases. */
-    if (slen < MARGIN) {
-	/* Gonna take you right into the DANGER ZONE. */
+    /* We know that (BUFSIZE - jc->length) is always bigger than
+       MARGIN going into this, but the compiler doesn't. Hopefully,
+       the compiler optimizes the following "if" statement away to a
+       true value for almost all cases when this is inlined and slen
+       is known to be smaller than MARGIN. */
+    if (slen < MARGIN || slen < BUFSIZE - jc->length) {
 	for (i = 0; i < slen; i++) {
-	    /* DANGER ZONE! */
 	    jc->buffer[jc->length + i] = s[i];
 	}
-	/* Phew. We survived the DANGER ZONE. */
 	jc->length += slen;
 	CHECKLENGTH;
     }
@@ -357,6 +377,7 @@ json_create_add_key_len (json_create_t * jc, const unsigned char * key, STRLEN k
 		/* Three byte case. */
 		if (input[1] < 0x80 || input[1] > 0xBF ||
 		    input[2] < 0x80 || input[2] > 0xBF) {
+		    warn ("Invalid UTF-8");
 		    return json_create_unicode_bad_utf8;
 		}
 		if (! jc->no_javascript_safe &&
@@ -382,6 +403,7 @@ json_create_add_key_len (json_create_t * jc, const unsigned char * key, STRLEN k
 	    else if ((c & 0xC0) == 0xC0) {
 		/* Two byte case. */
 		if (input[1] < 0x80 || input[1] > 0xBF) {
+		    warn ("Invalid UTF-8");
 		    return json_create_unicode_bad_utf8;
 		}
 		if (jc->unicode_escape_all) {
@@ -396,7 +418,7 @@ json_create_add_key_len (json_create_t * jc, const unsigned char * key, STRLEN k
 		i += 2;
 	    }
 	    else {
-		fprintf (stderr, "Strange byte %X in %s\n", c, key);
+		warn ("Invalid UTF-8");
 		return json_create_unicode_bad_utf8;
 	    }
 	    if (! jc->unicode_now) {
@@ -623,14 +645,14 @@ json_create_add_float (json_create_t * jc, SV * sv)
     }
     else {
 	if (isnan (fv)) {
-	    ADD("\"nan\"");
+	    ADD ("\"nan\"");
 	}
 	else if (isinf (fv)) {
 	    if (fv < 0.0) {
-		ADD("\"-inf\"");
+		ADD ("\"-inf\"");
 	    }
 	    else {
-		ADD("\"inf\"");
+		ADD ("\"inf\"");
 	    }
 	}
 	else {
@@ -788,7 +810,7 @@ json_create_validate_user_json (json_create_t * jc, SV * json)
     dSP;
     ENTER;
     SAVETMPS;
-    PUSHMARK(SP);
+    PUSHMARK (SP);
     XPUSHs (sv_2mortal (newSVsv (json)));
     PUTBACK;
     call_pv ("JSON::Parse::assert_valid_json",
@@ -800,8 +822,9 @@ json_create_validate_user_json (json_create_t * jc, SV * json)
 	return json_create_ok;
     }
     if (SvOK (error) && SvCUR (error) > 0) {
-	croak ("JSON::Parse::assert_valid_json failed for '%s': %s",
-	       SvPV_nolen (json), SvPV_nolen (error));
+	warn ("JSON::Parse::assert_valid_json failed for '%s': %s",
+	      SvPV_nolen (json), SvPV_nolen (error));
+	return json_create_invalid_user_json;
     }
     return json_create_ok;
 }
@@ -820,9 +843,9 @@ json_create_call_to_json (json_create_t * jc, SV * cv, SV * r)
     ENTER;
     SAVETMPS;
     
-    PUSHMARK(SP);
+    PUSHMARK (SP);
     //https://metacpan.org/source/AMBS/Math-GSL-0.35/swig/gsl_typemaps.i#L482
-    XPUSHs(sv_2mortal(newRV(r)));
+    XPUSHs (sv_2mortal(newRV(r)));
     PUTBACK;
     count = call_sv (cv, 0);
     if (count != 1) {
@@ -872,13 +895,27 @@ json_create_handle_ref (json_create_t * jc, SV * input)
 	    CALL (json_create_add_float (jc, r));
 	}
 	else {
-	    CALL (json_create_add_string (jc, input));
+	    CALL (json_create_add_string (jc, r));
 	}
 	break;
 
     case SVt_PVGV:
 	/* Completely untested. */
 	CALL (json_create_add_string (jc, r));
+	break;
+
+    case SVt_PV:
+	CALL (json_create_add_string (jc, r));
+	break;
+
+    case SVt_PVCV:
+	if (jc->code_ref_handler) {
+	    CALL (json_create_call_to_json (jc, jc->code_ref_handler, r));
+	}
+	else {
+	    warn ("Code reference cannot be serialized to JSON");
+	    return json_create_code_ref_found;
+	}
 	break;
 
     default:
@@ -889,7 +926,8 @@ json_create_handle_ref (json_create_t * jc, SV * input)
 	    CALL (json_create_add_string (jc, r));
 	}
 	else {
-	    UNKNOWN_TYPE_FAIL (t);
+	    warn ("Input's type cannot be serialized to JSON");
+	    return json_create_unknown_type;
 	}
     }
     return json_create_ok;
@@ -1070,11 +1108,7 @@ json_create_recursively (json_create_t * jc, SV * input)
 	json_create_status_t status;				\
 	status = x;						\
 	if (status != json_create_ok) {				\
-	    if (JCEH) {						\
-		(*JCEH) (__FILE__, __LINE__,			\
-			 "%s failed with status %d\n",		\
-			 #x, status);				\
-	    }							\
+	    HANDLE_STATUS (x, status);				\
 	    /* Free the memory of "output". */			\
 	    if (jc->output) {					\
 		SvREFCNT_dec (jc->output);			\
@@ -1161,6 +1195,7 @@ json_create (SV * input)
 
     jc.unicode_escape_all = 0;
     jc.handlers = 0;
+    jc.code_ref_handler = 0;
 
     return json_create_run (& jc, input);
 }
@@ -1173,6 +1208,8 @@ json_create_new (json_create_t ** jc_ptr)
     jc->n_mallocs = 0;
     jc->n_mallocs++;
     jc->fformat = 0;
+    jc->code_ref_handler = 0;
+    jc->handlers = 0;
     * jc_ptr = jc;
     return json_create_ok;
 }
@@ -1201,7 +1238,7 @@ json_create_set_fformat (json_create_t * jc, SV * fformat)
 	return json_create_ok;
     }
 
-    ff = SvPV(fformat, fflen);
+    ff = SvPV (fformat, fflen);
     if (! strchr (ff, '%')) {
 	return json_create_bad_floating_format;
     }
@@ -1227,10 +1264,22 @@ json_create_remove_handlers (json_create_t * jc)
 }
 
 static json_create_status_t
+json_create_remove_code_handler (json_create_t * jc)
+{
+    if (jc->code_ref_handler) {
+	SvREFCNT_dec (jc->code_ref_handler);
+	jc->code_ref_handler = 0;
+	jc->n_mallocs--;
+    }
+    return json_create_ok;
+}
+
+static json_create_status_t
 json_create_free (json_create_t * jc)
 {
     CALL (json_create_free_fformat (jc));
     CALL (json_create_remove_handlers (jc));
+    CALL (json_create_remove_code_handler (jc));
 
     /* Finished, check we have no leaks before freeing. */
 

@@ -1,5 +1,9 @@
-0.09_01 2015-10-31
+0.09_02 2015-10-31
 * Implement more complete Unicode support
+* Dereference behaviour for objects changed.
+* Code reference handling
+* "validate" method now warns rather than croaking.
+* Backtracing removed for user input errors.
 
 0.09 2015-10-31
 * Deal better with references containing numerical and string values

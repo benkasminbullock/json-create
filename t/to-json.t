@@ -119,12 +119,12 @@ sub to_json { return 'this is not valid JSON'; }
 package main;
 my $mn = Masako::Natsume->new ();
 $newjc->obj ('Masako::Natsume' => \&Masako::Natsume::to_json);
-eval {
-    my $mnj = $newjc->run ({tripitaka => $mn});
-    note ($mnj);
-};
-ok ($@);
-note ($@);
+my $warning;
+$SIG{__WARN__} = sub {$warning = "@_";};
+my $mnj = $newjc->run ({tripitaka => $mn});
+ok (! defined $mnj);
+ok ($warning);
+note ($warning);
 
 TODO: {
     local $TODO = 'Combine boolean and obj';

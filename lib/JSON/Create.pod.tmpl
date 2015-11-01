@@ -15,10 +15,20 @@ produces
 
 =head1 DESCRIPTION
 
-This module produces JSON out of Perl.
+This module produces JSON out of Perl. It offers a simple default
+function L</create_json> which converts Perl into JSON using common
+defaults, and a customizable object created with L</new> where the
+user can specify a variety of behaviours. For example, Unicode
+escaping into ASCII via L</unicode_escape_all>, floating point number
+formatting via L</set_fformat>, escaping of slashes (/) with
+L</escape_slash>, JSON serialization of objects with L</obj>, or
+boolean handling with L</bool>.
+
+=head1 EXAMPLES
 
 The example programs in this documentation are all found in the
-directory F<examples/> in the distribution.
+directory F<examples/> in the distribution. All the outputs below are
+taken from the actual outputs of the example programs.
 
 =head1 FUNCTIONS
 
@@ -30,8 +40,7 @@ Convert a Perl hash reference or array reference into JSON. The return
 value is the output JSON.
 
 Details of the conversion of each type are given in
-L</CONVERSIONS>. If you want to alter the default conversions, you
-need to make an object with L</new>.
+L</CONVERSIONS>.
 
 =head1 CONVERSIONS
 
@@ -63,18 +72,19 @@ outputs
 
 =head2 Scalars
 
-Non-reference scalars are converted to strings, JSON integers or JSON
-floats depending on what Perl says they contain.
+Perl scalars are converted to strings, JSON integers or JSON floats.
 
 =head3 Strings
 
-As far as possible, strings are written as-is to the JSON.  See
-L</RFC 7159> for details of JSON's rules for strings.
+As far as possible, strings are written as-is to the JSON. However,
+JSON requires that strings be in Unicode, and that some whitespace and
+control characters are escaped. (See L</RFC 7159>.)
 
-Bytes of value less than 0x20 are converted into the appropriate JSON
-escapes, either the whitespace escapes \b (backspace) \r, \t, \n, and
-\f, or the form \u0001 for other control characters. The backslash is
-written as \\ and double quotes are written as \". 
+Bytes of value less than 0x20 in a Perl string are converted into the
+appropriate JSON escapes, either the whitespace escapes \b (backspace)
+\r, \t, \n, and \f, or the form \u0001 for other control
+characters. The backslash is written as C<\\> and double quotes are
+written as C<\">.
 
 [% INCLUDE "weirdstring.pl" | xtidy %]
 
@@ -82,37 +92,44 @@ outputs
 
 [% INCLUDE "weirdstring-out.txt" | xtidy %]
 
-By default, the forward slash, /, known as "solidus" in the JSON
-specification, is not escaped. If you need to escape forward slashes,
-create a JSON::Create object with L</new>, set it to escape slashes
-with L</escape_slash>, then create the JSON with L</run> rather than
-L</create_json>.
+[% MACRO see(method) BLOCK -%]
+This behaviour can be altered with the method L</[% method %]> (see below)
+[%- END %]
 
-Unicode values are not escaped.
+The forward slash, /, known as "solidus" in the JSON specification, is
+not escaped. [% see('escape_slash') %].
+
+Unicode values U+2028 and U+2029 are escaped.  [%
+see('no_javascript_safe') %].  Other Unicode values are not escaped.
+[% see('unicode_escape_all') %].
 
 =head3 Integers
 
 Integers are printed in the obvious way. Note that what you input to
 Perl as an integer, Perl may interpret to be a floating point number,
-if has a very large absolute value, in which case this module will
+if it has a very large absolute value, in which case this module will
 print it out like a floating point number.
 
 =head3 Floating point numbers
 
 Finite floating point numbers are printed using printf formatting via
-C<"%g">. You can alter the format used to print floating point numbers
-by creating an object with L</new>, setting the format with
-L</set_fformat>, and creating the json with L</run> rather than
-L</create_json>.
+C<"%g">, like
 
-NaN (not a number) is converted to the string C<"nan">, the letters
-C<nan> surrounded by double quotes. Similarly, positive and negative
-infinity are converted to the strings C<"inf"> and C<"-inf">
-respectively. Note that JSON does not allow NaN or infinity as bare
-values. From page 6 of L</RFC 7159>:
+    printf ("%g", $number);
 
-    Numeric values that cannot be represented in the grammar below
-    (such as Infinity and NaN) are not permitted.
+[% see('set_fformat') %]
+
+NaN (not a number) values are converted to C<"nan"> (the letters
+C<nan> surrounded by double quotes). Positive and negative infinity
+are converted to C<"inf"> and C<"-inf"> respectively. JSON does not
+allow NaN or infinity as bare values. From page 6 of L</RFC 7159>:
+
+=over
+
+Numeric values that cannot be represented in the grammar below (such
+as Infinity and NaN) are not permitted.
+
+=back
 
 =head3 The undefined value
 
@@ -120,56 +137,69 @@ Undefined values are mapped to the JSON literal "null".
 
 =head3 Booleans
 
-Booleans (C<true> and C<false>) from input via JSON::Parse (version
-0.36_01 or later) will be turned into C<true> and C<false>
-outputs. You can also arrange for Perl objects, such as the "true" and
-"false" values of L<JSON::PP>, to be converted to booleans using
-L</bool>. This requires the use of a JSON::Create object created via
-L</new>.
-
-=head3 Unicode escapes
-
-There is no facility to produce Unicode escapes of the form C<\u3000>,
-except for control characters (bytes less than 0x20 in value which are
-not whitespace or \b).
+Booleans (C<true> and C<false>) from input via JSON::Parse version
+0.37 or later will be turned into C<true> and C<false>. Perl objects
+can be converted to booleans using the method L</bool> (see below).
 
 =head3 Unicode
 
 If any part of the input object is marked as "utf8" (multibyte
 characters), every non-ASCII string in the input object needs to be
 marked as such, otherwise the module prints a warning and returns an
-undefined value. If every part of the input is not marked as "utf8",
-this does not happen, but there is also currently no validation of the
-output as being in Unicode, so binary strings can pass through without
-correction. See also L</BUGS>.
+undefined value. 
+
+=head4 Unicode escapes
+
+All Unicode characters except the below-mentioned pair are put into
+the output JSON as-is. To convert non-ASCII characters into Unicode
+escapes of the form C<\u3000>, use the method L</unicode_escape_all>
+(see below).
 
 =head4 U+2028 and U+2029 (JavaScript clashes)
 
     my $out = create_json (["\x{2028}"]);
     # $out = '["\u2028"]'
 
-JSON::Create by default escapes Unicode code points U+2028 and U+2029
-because of an issue with JavaScript compatibility. This can be
-switched off using the method L</no_javascript_safe>.
+L</create_json> escapes Unicode code points U+2028 and U+2029 as
+C<\u2028> and C<\u2029> for JavaScript compatibility. [%
+see('no_javascript_safe')%].
 
-=head2 Other reference types
+This escaping is necessary because of a clash between the JSON
+standard and the JavaScript (ECMAScript) standard. The characters
+U+2028 ("LINE SEPARATOR" in the Unicode standard) and U+2029
+("PARAGRAPH SEPARATOR" in the Unicode standard) are valid within JSON,
+as defined by L</RFC 7159>, but invalid within JavaScript strings, as
+defined by the ECMA standard (See ECMA Standard ECMA-262, "ECMAScript
+Language Specification", 3rd Edition, section 7.3 "Line Terminators").
+
+=head2 Other types
 
 =head3 Regexes
 
 If the scalar contains a regex then JSON::Create lets Perl convert the
-regex to a string then adds that. The output depends on the Perl
+regex to a string then adds that. The exact output depends on the Perl
 version.
 
-=head3 Code references and other
+=head3 Objects
 
-A code reference in the input causes the entire return value to be the
-undefined value.
+Perl objects (blessed references) are dereferenced and then handed as
+if non-object types. [% see('obj') %].
+
+=head3 Code references
+
+A code reference in the input prints a warning and causes the entire
+return value to be the undefined value. [% see('code_ref_handler') %].
+
+=head3 Other references
+
+Any other type of reference (glob etc.) causes a warning to be printed
+and the return value to be the undefined value.
 
 =head1 METHODS
 
-If you want to alter the format of the output from the default, it's
-necessary to create an object and then set the defaults on that
-object.
+To alter the format of the output from the defaults of
+L</create_json>, create an object with L</new> and then set
+preferences on that object before producing output with L</run>.
 
 =head2 new
 
@@ -193,11 +223,12 @@ output JSON in a different way from the default.
 =head3 bool
 
     $jc->bool ('boolean');
+    $jc->bool (qw/boolean JSON::Tiny::_Bool/);
 
-Given a list of object types, it will convert objects of these types
-into the JSON literals C<true> or C<false> depending on whether Perl
-thinks they're true or false. (This interface is experimental, and may
-change without notice.)
+The argument is a list of object names. The JSON::Create object,
+C<$jc> in the example, will convert objects of these types into the
+JSON literals C<true> or C<false> depending on whether Perl thinks
+they're true or false. For example,
 
 [% INCLUDE "boolean.pl" | xtidy %]
 
@@ -267,6 +298,24 @@ yourself, the tests will just be skipped.
 
 More modules will be added to this list as time permits.
 
+=head3 code_ref_handler
+
+    $jc->code_ref_handler (sub {return 'null'});
+
+If you want to handle code references within the input, you can pass a
+code reference handler to the JSON::Create object. This is called when
+a code reference is found in the input. For example, if you want to
+put the JSON literal C<null> in the output when you find a code
+reference, the above example will do it. 
+
+The code reference handler takes one value, which is the code
+reference it is supposed to handle, and should return one value, a
+valid JSON string.  If you want to have your return value validated,
+use the L</validate> option (see below).
+
+The method that code references are handled with the handler is very
+similar to the way that objects are handled. See also L</obj>.
+
 =head3 escape_slash
 
     $jc->escape_slash (1);
@@ -282,29 +331,46 @@ outputs
 
 [% INCLUDE "escape-slash-out.txt" | xtidy %]
 
+=head3 no_javascript_safe
+
+    $jc->no_javascript_safe (1);
+
+If called with a true value, this switches off JavaScript protection
+in the output JSON. If called with a false value, the JavaScript
+protection is switched on again.
+
+[% INCLUDE "js-safe.pl" | xtidy %]
+
+produces
+
+[% INCLUDE "js-safe-out.txt" | xtidy %]
+
+See also L</U+2028 and U+2029 (JavaScript clashes)>.
+
 =head3 obj
 
     $jc->obj ('Zilog::Z80' => sub { my ($obj) = @_; print "\"Z80\""; });
 
-With this method you can register JSON generators for your Perl
-objects. When JSON::Create finds your object, it will call the method
-you have supplied.
+Register JSON generators for Perl objects. When JSON::Create finds an
+object with a registered type, it will call the method you have
+supplied.
 
-Call C<obj> with a hash. The keys are your object names, and the
-corresponding values are code references to the function you want to run:
+The argument to C<obj> is a hash. The keys are object names, and the
+corresponding values are code references to the JSON serializer for
+that object:
 
     $jc->obj (
-         'My::Cool::Object' => \& object_to_json,
+        'My::Object' => \& object_to_json,
     );
 
 The function is called with the object reference as its only
 argument, as if called like this:
 
-    my $user_json = $cool_object->object_to_json ();
+    my $user_json = $my_object->object_to_json ();
 
-The return value of your function, C<object_to_json> in the above
-example, must be a single value, a string containing your object's
-JSON encoding.
+The return value of the function, C<object_to_json> in the above
+example, must be a single value, a string containing the object's JSON
+encoding.
 
 [% INCLUDE "zilog.pl" | xtidy %]
 
@@ -312,9 +378,17 @@ produces
 
 [% INCLUDE "zilog-out.txt" | xtidy %]
 
-The output of your method is passed through to the output string
-completely unaltered. If you want to have your JSON output checked for
-validity, you can switch on validation using the method L</validate>.
+The output is passed through to the output string unaltered. To have
+your JSON output checked for validity, use the L</validate> option.
+
+Remember that if you need to pass or return more than a single
+argument, you can use a closure:
+
+[% INCLUDE "closure.pl" | xtidy %]
+
+produces
+
+[% INCLUDE "closure-out.txt" | xtidy %]
 
 =head3 set_fformat
 
@@ -336,7 +410,7 @@ outputs
     $jc->unicode_escape_all (1);
 
 Call this with a true value to make all Unicode characters be escaped
-into the \u3000 format.
+into the C<\u3000> format. A false value switches that off again.
 
 [% INCLUDE "escape-all.pl" | xtidy %]
 
@@ -355,28 +429,15 @@ hexadecimal. See the example under L</unicode_escape_all>.
 
     $jc->validate (1);
 
-If this is called with a true value, validate the user-generated JSON
-given by the callbacks registered with L</obj>. The validation is done
-via the routine C<assert_valid_json> of L<JSON::Parse>, so you need to
-have that module installed to use this.
+If this is called with a true value, JSON::Create validates the
+user-generated JSON given by the callbacks registered with L</obj> and
+L</code_ref_handler>. The validation is done via the routine
+C<assert_valid_json> of L<JSON::Parse>, so that module must be
+installed, otherwise the call to C<validate> will fail.
 
 If JSON::Parse is installed, and the JSON fails to validate, this will
-produce a fatal error. If JSON::Parse is not installed, it will also
-produce a fatal error, regardless of whether your JSON is valid.
-
-=head3 no_javascript_safe
-
-    $jc->no_javascript_safe (1);
-
-If called with a true value, this switches off JavaScript protection
-in the output JSON. If called with a false value, the JavaScript
-protection is switched on again.
-
-[% INCLUDE "js-safe.pl" | xtidy %]
-
-produces
-
-[% INCLUDE "js-safe-out.txt" | xtidy %]
+produce a warning containing the string and the error produced by
+C<assert_valid_json>, and the return value will be undefined.
 
 =head1 EXPORTS
 
@@ -422,11 +483,13 @@ There is currently no facility to add whitespace to the output JSON.
 There is currently no way to delete object handlers from a
 JSON::Create object.
 
+There are a few remaining undecided issues around the default object
+serialization.
+
 =head1 PERFORMANCE
 
-This module is currently at an early stage of development, so speed is
-not a key issue until the module is demonstrably producing correct
-outputs.
+This module is fairly new on the scene, so speed is not a key issue
+until the module is demonstrably producing correct outputs.
 
 However, due to user interest, there is a benchmarking script in
 F<bench/bench.pl> which compares the performance of the module with
@@ -447,13 +510,14 @@ details.
 
 The exact time I've spent making this module is recorded in the file
 F<timesheet.txt> in the top directory of the distribution. At the time
-of version 0.07, I've spent 1 day, 2 hours and 26 minutes working on
-this.
+of version 0.09_02, I've spent 1 day, 6 hours and 41 minutes working
+on this.
 
 The module is currently in use everywhere that I need to generate JSON
 within Perl. However, I would suggest caution in switching to this
-module from the more established JSON solutions on CPAN, since not all
-parts are implemented yet.
+module from the more established JSON solutions on CPAN, since while
+most parts are implemented, there are some corner-cases and untested
+code.
 
 [% INCLUDE "author" %]
 [% INCLUDE "terminology" %]
