@@ -20,3 +20,6 @@ MYMETA..*
 ^examples/.*-out\.txt$
 # Benchmark output
 ^bench/bench\.output
+# Author build file
+^make-pod\.pl$
+^timesheet\.txt$
