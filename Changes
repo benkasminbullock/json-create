@@ -1,9 +1,17 @@
-0.09_02 2015-10-31
-* Implement more complete Unicode support
+0.11 2015-11-02
+* Remove debugging code in central loop
+* Fix bug in JavaScript escaping
+
+0.10 2015-11-02
+* Implement more complete Unicode support, including validation.
 * Dereference behaviour for objects changed.
-* Code reference handling
+* Optional reference handling
 * "validate" method now warns rather than croaking.
 * Backtracing removed for user input errors.
+* Remove regexp and code reference handling in favour of general
+  ref_handler method.
+* Add "fatal_errors" method to change behaviour to/from dying on
+  error.
 
 0.09 2015-10-31
 * Deal better with references containing numerical and string values

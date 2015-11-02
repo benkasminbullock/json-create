@@ -47,6 +47,8 @@ ok (! utf8::is_utf8 ($nonuout), "Output is not marked as Unicode");
 like ($nonuout, qr/"う":"雨"/, "key / value pair u");
 like ($nonuout, qr/"あ":"亜"/, "key / value pair a");
 
+use utf8;
+
 # There is a bug here, that we must actually validate all the UTF-8 in
 # the code when the Perl flag is switched off, otherwise we may
 # produce invalid JSON.
@@ -63,6 +65,12 @@ like ($nonuout, qr/"あ":"亜"/, "key / value pair a");
     my $in2029 = "\x{2029}";
     my $out2029 = $jc->run ($in2029);
     is ($out2029, '"\u2029"', "default JS protection");
+
+    # Test that i is being incremented.
+
+    my $mixed = "\x{2028}\x{02a7}\x{2029}\x{3074}\x{2029}m\x{2028}";
+    my $outmixed = $jc->run ($mixed);
+    is ($outmixed, '"\u2028ʧ\u2029ぴ\u2029m\u2028"', "default JS protection");
 
     $jc->no_javascript_safe (1);
 

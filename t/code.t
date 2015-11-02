@@ -30,7 +30,7 @@ my $hascoderef1 = {stuff => $code1};
 my $outcode1 = create_json ($hascoderef1);
 ok (! defined $outcode1, "Code reference returns the undefined value");
 ok ($warning, "Got a warning");
-like ($warning, qr/code reference/i, "Warning is the right kind of thing");
+like ($warning, qr/cannot be serialized/i, "Warning is the right kind of thing");
 note ($warning);
 
 #TODO: {
@@ -45,7 +45,7 @@ note ($warning);
 	return 'null';
     };
     my $jc = JSON::Create->new ();
-    $jc->code_ref_handler (\& coderef);
+    $jc->type_handler (\& coderef);
     my $outcode2 = $jc->run ($hascoderef1);
     ok (defined $outcode2, "output is defined");
     ok (valid_json ($outcode2), "output is valid");

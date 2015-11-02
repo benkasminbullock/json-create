@@ -5,8 +5,9 @@
 use warnings;
 use strict;
 use utf8;
-use Benchmark ':all';
+#use Benchmark ':all';
 use FindBin '$Bin';
+use Time::HiRes;
 
 # Just so I can use the latest versions
 
@@ -22,11 +23,8 @@ use Cpanel::JSON::XS;
 # Number of repetitions. No matter how large this is made, the results
 # always vary wildly from run to run.
 
-my $count = 100;
-# The results seem to stabilize better if we run the inner loop a
-# number of times. Still, unfortunately, setting this very large
-# doesn't stabilize the results completely.
-my $inner = 10000;
+my $count = 1000;
+my $times = 100;
 
 print "Versions used:\n\n";
 my @modules = qw/Cpanel::JSON::XS JSON::XS JSON::Create/;
@@ -34,8 +32,14 @@ for my $module (@modules) {
     my $abbrev = $module;
     $abbrev =~ s/(\w)\w+\W*/$1/g; 
     my $version = eval "\$${module}::VERSION";
-    print "$abbrev\t$module\t$version\n";
+    printf "%-5s | %20s | %-7s\n", $abbrev, $module, $version;
 }
+
+my %these = (
+    'JC' => 'JSON::Create::create_json ($stuff)',
+    'JX' => 'JSON::XS::encode_json ($stuff)',
+    'CJX' => 'Cpanel::JSON::XS::encode_json ($stuff)',
+);
 
 # ASCII string test
 
@@ -56,27 +60,9 @@ my $stuff = {
 
 header ("hash of ASCII strings");
 
-cmpthese (
-    $count,
-    {
-	'JC' => sub {
-	    for (1..$inner) {
-		my $x = JSON::Create::create_json ($stuff);
-	    }
-	},
-	'JX' => sub {
-	    for (1..$inner) {
-		my $x = JSON::XS::encode_json ($stuff);
-	}
-	},
-	'CJX' => sub {
-	    for (1..$inner) {
-		my $x = Cpanel::JSON::XS::encode_json ($stuff);
-	    }
-	},
-    },    
-);
+cmpthese ($stuff);
 
+#exit;
 my $h2n = {
     a => 1,
     b => 2,
@@ -113,26 +99,7 @@ my $h2n = {
 
 header ("hash of integers");
 
-cmpthese (
-    $count,
-    {
-	'JC' => sub {
-	    for (1..$inner) {
-		my $x = JSON::Create::create_json ($h2n);
-	    }
-	},
-	'JX' => sub {
-	    for (1..$inner) {
-		my $x = JSON::XS::encode_json ($h2n);
-	    }
-	},
-	'CJX' => sub {
-	    for (1..$inner) {
-		my $x = Cpanel::JSON::XS::encode_json ($h2n);
-	    }
-	},
-    },    
-);
+cmpthese ($h2n);
 
 use utf8;
 
@@ -150,52 +117,91 @@ my %unihash = (
 
 header ("hash of Unicode strings");
 
-cmpthese (
-    $count,
-    {
-	'JC' => sub {
-	    for (1..$inner) {
-		my $x = JSON::Create::create_json (\%unihash);
-	    }
-	},
-	'JX' => sub {
-	    for (1..$inner) {
-		my $x = JSON::XS::encode_json (\%unihash);
-	    }
-	},
-	'CJX' => sub {
-	    for (1..$inner) {
-		my $x = Cpanel::JSON::XS::encode_json (\%unihash);
-	    }
-	},
-    },    
-);
+cmpthese (\%unihash);
 
 header ("array of floats");
 
 my $floats = [1.0e-10, 0.1, 1.1, 9e9, 3.141592653,-1.0e-20,-9e19,];
 
-cmpthese (
-    $count,
-    {
-	'JC' => sub {
-	    for (1..$inner) {
-		my $x = JSON::Create::create_json ($floats);
-	    }
-	},
-	'JX' => sub {
-	    for (1..$inner) {
-		my $x = JSON::XS::encode_json ($floats);
-	    }
-	},
-	'CJX' => sub {
-	    for (1..$inner) {
-		my $x = Cpanel::JSON::XS::encode_json ($floats);
-	    }
-	},
-    },    
-);
+cmpthese ($floats);
+
+header ("array of ASCII strings");
+
+my $json = [
+    'Higgins',
+    'TC',
+    'Magnum',
+    'Hawaii',
+    'Higgins',
+    'TC',
+    'Magnum',
+    'Hawaii',
+    'Links to the netherworld',
+    'Shakespeare',
+    'ferrari',
+    '1234567890',
+    'Selleck',
+    'The old Clifford estate',
+    'I did make a point of going in the daytime',
+    'You\'re supposed to be dead',
+    'Are you the one that hit me?',
+    'Any particular reason?',
+    'Why didn\'t you just call the police?',
+    'GOT TO YOU',
+]; 
+
+cmpthese ($json);
+
 exit;
+
+sub cmpthese
+{
+    my ($stuff) = @_;
+    my $min = 1e99;
+    my %min;
+    my $worst;
+
+    print "Repetitions: $count x $times = ", $count * $times, "\n";
+
+    printf "---------+-------------+------------+----------+\n";
+    printf "%-8s | %11s | %10s | %8s |\n", "module", "1/min", "min", "improve";
+    printf "---------|-------------|------------|----------|\n";
+
+    $worst = 0;
+    for my $module (sort keys %these) {
+	$min{$module} = $min;
+	for (1..$times) {
+	    my $t = bench ($these{$module}, $stuff);
+	    if ($t < $min{$module}) {
+		$min{$module} = $t;
+	    }
+	}
+	if ($min{$module} > $worst) {
+	    $worst = $min{$module};
+	}
+    }
+
+    for my $module (sort keys %these) {
+	printf "%-8s | %11.3f | %10.7f | %2.4f   |\n", $module, $count/$min{$module}, $min{$module}, $worst / $min{$module};
+    }
+    printf "---------+-------------+------------+----------+\n";
+}
+
+sub bench
+{
+    my ($code, $stuff) = @_;
+
+    my $cent = eval "sub { my \$t = Time::HiRes::time; " . (join ";", ($code) x $count) . "; Time::HiRes::time - \$t }";
+    if ($@) {
+	print "$@\n";
+    }
+    $cent->();
+    my $t = $cent->();
+
+    return $t;
+}
+
+
 
 sub header
 {

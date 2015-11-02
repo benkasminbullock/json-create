@@ -98,6 +98,14 @@ CODE:
 	jc->no_javascript_safe = SvTRUE (onoff) ? 1 : 0;
 
 void
+fatal_errors (jc, onoff)
+	JSON::Create jc;
+	SV * onoff;
+CODE:
+	jc->fatal_errors = SvTRUE (onoff) ? 1 : 0;
+
+
+void
 set_handlers (jc, handlers)
 	JSON::Create jc
 	HV * handlers
@@ -121,15 +129,15 @@ OUTPUT:
 	RETVAL
 
 void
-code_ref_handler (jc, crh)
+type_handler (jc, crh)
 	JSON::Create jc;
 	SV * crh;
 CODE:
+	/* Remove a previous ref handler, if it exists. */
+	PERLJCCALL (json_create_remove_type_handler (jc));
 	if (SvTRUE (crh)) {
-	    jc->code_ref_handler = crh;
+	    jc->type_handler = crh;
 	    SvREFCNT_inc (crh);
 	    jc->n_mallocs++;
 	}
-	else {
-	    PERLJCCALL (json_create_remove_code_handler (jc));
-	}
+

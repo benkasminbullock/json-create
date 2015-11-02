@@ -28,7 +28,6 @@ typedef enum {
     json_create_bad_floating_format,
     /* */
     json_create_unicode_bad_utf8,
-    json_create_code_ref_found,
     /* User's routine returned invalid stuff. */
     json_create_invalid_user_json,
 }
@@ -55,14 +54,10 @@ typedef struct json_create {
     /* Handlers for objects and booleans. If there are no handlers,
        this is zero (a NULL pointer). */
     HV * handlers;
-    /* Code reference handler. */
-    SV * code_ref_handler;
+    /* User reference handler. */
+    SV * type_handler;
     /* Do any of the SVs have a Unicode flag? */
     unsigned int unicode : 1;
-    /* Does the SV we're currently looking at have a Unicode flag? */
-    unsigned int unicode_now : 1;
-    /* Did we see non-Unicode and non-ASCII bytes? */
-    unsigned int non_unicode : 1;
     /* Should we convert / into \/? */
     unsigned int escape_slash : 1;
     /* Should Unicode be upper case? */
@@ -71,8 +66,10 @@ typedef struct json_create {
     unsigned int unicode_escape_all : 1;
     /* Should we validate user-defined JSON? */
     unsigned int validate : 1;
-    /* */
+    /* Do not escape U+2028 and U+2029. */
     unsigned int no_javascript_safe : 1;
+    /* Make errors fatal. */
+    unsigned int fatal_errors : 1;
 }
 json_create_t;
 
@@ -88,16 +85,6 @@ json_create_t;
     if (jc->length >= BUFSIZE - MARGIN) {	\
 	CALL (json_create_buffer_fill (jc));	\
     }
-
-static int
-perl_error_handler (const char * file, int line_number, const char * msg, ...)
-{
-    va_list args;
-    va_start (args, msg);
-    vcroak (msg, & args);
-    va_end (args);
-    return 0;
-}
 
 /* Print an error to stderr. */
 
@@ -123,7 +110,6 @@ static int (* json_create_error_handler) (const char * file, int line_number, co
 	switch (status) {					\
 	    /* These exceptions indicate a user error. */	\
 	case json_create_unknown_type:				\
-	case json_create_code_ref_found:			\
 	case json_create_unicode_bad_utf8:			\
 	case json_create_invalid_user_json:			\
 	    break;						\
@@ -146,6 +132,20 @@ static int (* json_create_error_handler) (const char * file, int line_number, co
 	    return status;						\
 	}								\
     }
+
+static void
+json_create_user_message (json_create_t * jc, json_create_status_t status, const char * format, ...)
+{
+    va_list a;
+    /* Check the status. */
+    va_start (a, format);
+    if (jc->fatal_errors) {
+	vcroak (format, & a);
+    }
+    else {
+	vwarn (format, & a);
+    }
+}
 
 /* Everything else in this file is ordered from callee at the top to
    caller at the bottom, but because of the recursion as we look at
@@ -305,132 +305,425 @@ add_u (json_create_t * jc, unsigned int u)
     }
 }
 
+#define BADUTF8							\
+    json_create_user_message (jc, json_create_unicode_bad_utf8,	\
+			      "Invalid UTF-8");			\
+    return json_create_unicode_bad_utf8;
+
+
 /* Add a string to the buffer with quotes around it and escapes for
-   the escapables. When Unicode verification is added to the module,
-   it will be added here. */
+   the escapables. */
 
 static INLINE json_create_status_t
 json_create_add_key_len (json_create_t * jc, const unsigned char * key, STRLEN keylen)
 {
     int i;
+    int l;
+    l = 0;
     CALL (add_char (jc, '"'));
     for (i = 0; i < keylen; ) {
-	unsigned char c;
-	int j = i;
+	unsigned char c, d, e, f;
 	c = key[i];
-	if (c < 0x20) {
-	    if (c == '\t') {
-		ADD ("\\t");
-	    }
-	    else if (c == '\n') {
-		ADD ("\\n");
-	    }
-	    else if (c == '\r') {
-		ADD ("\\r");
-	    }
-	    else if (c == '\b') {
-		ADD ("\\b");
-	    }
-	    else if (c == '\f') {
-		ADD ("\\f");
-	    }
-	    else {
-		/* We know c is less than 0x10000, so we can use
-		   "add_one_u" not "add_u" here. */
-		CALL (add_one_u (jc, (unsigned int) c));
-	    }
+	switch (c) {
+	case 000:
+	case 001:
+	case 002:
+	case 003:
+	case 004:
+	case 005:
+	case 006:
+	case 007:
+	    CALL (add_one_u (jc, (unsigned int) c));
+	    // Increment i
 	    i++;
-	}
-	else if (c < 0x80) {
-	    if (c == '"') {
-		ADD ("\\\"");
-	    }
-	    else if (c == '\\') {
-		ADD ("\\\\");
-	    }
-	    else if (c == '/' && jc->escape_slash) {
+	    break;
+	case '\b':
+	    ADD ("\\b");
+	    // Increment i
+	    i++;
+	    break;
+	case '\t':
+	    ADD ("\\t");
+	    // Increment i
+	    i++;
+	    break;
+	case '\n':
+	    ADD ("\\n");
+	    // Increment i
+	    i++;
+	    break;
+
+	case 013:
+	    CALL (add_one_u (jc, (unsigned int) 013));
+	    // Increment i
+	    i++;
+	    break;
+
+	case '\f':
+	    ADD ("\\f");
+	    // Increment i
+	    i++;
+	    break;
+
+	case '\r':
+	    ADD ("\\r");
+	    // Increment i
+	    i++;
+	    break;
+
+	case 016:
+	case 017:
+	case 020:
+	case 021:
+	case 022:
+	case 023:
+	case 024:
+	case 025:
+	case 026:
+	case 027:
+	case 030:
+	case 031:
+	case 032:
+	case 033:
+	case 034:
+	case 035:
+	case 036:
+	case 037:
+	    /* We know c is less than 0x10000, so we can use
+	       "add_one_u" not "add_u" here. */
+	    CALL (add_one_u (jc, (unsigned int) c));
+	    // Increment i
+	    i++;
+	    break;
+
+
+	case 0x20:
+	case 0x21:
+	    CALL (add_char (jc, c));
+	    // Increment i
+	    i++;
+	    break;
+
+	case '"':
+	    ADD ("\\\"");
+	    // Increment i
+	    i++;
+	    break;
+
+	case 0x23:
+	case 0x24:
+	case 0x25:
+	case 0x26:
+	case 0x27:
+	case 0x28:
+	case 0x29:
+	case 0x2a:
+	case 0x2b:
+	case 0x2c:
+	case 0x2d:
+	case 0x2e:
+	    CALL (add_char (jc, c));
+	    // Increment i
+	    i++;
+	    break;
+
+	case '/':
+	    if (jc->escape_slash) {
 		ADD ("\\/");
+		// Increment i
+		i++;
+		break;
+	    }
+	    /* Fall through. */
+
+	case 0x30:
+	case 0x31:
+	case 0x32:
+	case 0x33:
+	case 0x34:
+	case 0x35:
+	case 0x36:
+	case 0x37:
+	case 0x38:
+	case 0x39:
+	case 0x3a:
+	case 0x3b:
+	case 0x3c:
+	case 0x3d:
+	case 0x3e:
+	case 0x3f:
+	case 0x40:
+	case 0x41:
+	case 0x42:
+	case 0x43:
+	case 0x44:
+	case 0x45:
+	case 0x46:
+	case 0x47:
+	case 0x48:
+	case 0x49:
+	case 0x4a:
+	case 0x4b:
+	case 0x4c:
+	case 0x4d:
+	case 0x4e:
+	case 0x4f:
+	case 0x50:
+	case 0x51:
+	case 0x52:
+	case 0x53:
+	case 0x54:
+	case 0x55:
+	case 0x56:
+	case 0x57:
+	case 0x58:
+	case 0x59:
+	case 0x5a:
+	case 0x5b:
+	    CALL (add_char (jc, c));
+	    // Increment i
+	    i++;
+	    break;
+
+	case '\\':
+	    ADD ("\\\\");
+	    // Increment i
+	    i++;
+	    break;
+
+	case 0x5d:
+	case 0x5e:
+	case 0x5f:
+	case 0x60:
+	case 0x61:
+	case 0x62:
+	case 0x63:
+	case 0x64:
+	case 0x65:
+	case 0x66:
+	case 0x67:
+	case 0x68:
+	case 0x69:
+	case 0x6a:
+	case 0x6b:
+	case 0x6c:
+	case 0x6d:
+	case 0x6e:
+	case 0x6f:
+	case 0x70:
+	case 0x71:
+	case 0x72:
+	case 0x73:
+	case 0x74:
+	case 0x75:
+	case 0x76:
+	case 0x77:
+	case 0x78:
+	case 0x79:
+	case 0x7a:
+	case 0x7b:
+	case 0x7c:
+	case 0x7d:
+	case 0x7e:
+	case 0x7f:
+	    CALL (add_char (jc, c));
+	    // Increment i
+	    i++;
+	    break;
+
+	case 0x80:
+	case 0x81:
+	case 0x82:
+	case 0x83:
+	case 0x84:
+	case 0x85:
+	case 0x86:
+	case 0x87:
+	case 0x88:
+	case 0x89:
+	case 0x8a:
+	case 0x8b:
+	case 0x8c:
+	case 0x8d:
+	case 0x8e:
+	case 0x8f:
+	case 0x90:
+	case 0x91:
+	case 0x92:
+	case 0x93:
+	case 0x94:
+	case 0x95:
+	case 0x96:
+	case 0x97:
+	case 0x98:
+	case 0x99:
+	case 0x9a:
+	case 0x9b:
+	case 0x9c:
+	case 0x9d:
+	case 0x9e:
+	case 0x9f:
+	case 0xa0:
+	case 0xa1:
+	case 0xa2:
+	case 0xa3:
+	case 0xa4:
+	case 0xa5:
+	case 0xa6:
+	case 0xa7:
+	case 0xa8:
+	case 0xa9:
+	case 0xaa:
+	case 0xab:
+	case 0xac:
+	case 0xad:
+	case 0xae:
+	case 0xaf:
+	case 0xb0:
+	case 0xb1:
+	case 0xb2:
+	case 0xb3:
+	case 0xb4:
+	case 0xb5:
+	case 0xb6:
+	case 0xb7:
+	case 0xb8:
+	case 0xb9:
+	case 0xba:
+	case 0xbb:
+	case 0xbc:
+	case 0xbd:
+	case 0xbe:
+	case 0xbf:
+	case 0xc0:
+	case 0xc1:
+	    BADUTF8;
+
+	case 0xc2:
+	case 0xc3:
+	case 0xc4:
+	case 0xc5:
+	case 0xc6:
+	case 0xc7:
+	case 0xc8:
+	case 0xc9:
+	case 0xca:
+	case 0xcb:
+	case 0xcc:
+	case 0xcd:
+	case 0xce:
+	case 0xcf:
+	case 0xd0:
+	case 0xd1:
+	case 0xd2:
+	case 0xd3:
+	case 0xd4:
+	case 0xd5:
+	case 0xd6:
+	case 0xd7:
+	case 0xd8:
+	case 0xd9:
+	case 0xda:
+	case 0xdb:
+	case 0xdc:
+	case 0xdd:
+	case 0xde:
+	case 0xdf:
+	    d = key[i + 1];
+	    if (d < 0x80 || d > 0xBF) {
+		BADUTF8;
+	    }
+	    if (jc->unicode_escape_all) {
+		unsigned int u;
+		u = (c & 0x1F)<<6
+		  | (d & 0x3F);
+		CALL (add_u (jc, u));
 	    }
 	    else {
-		CALL (add_char (jc, c));
+		CALL (add_str_len (jc, (const char *) key + i, 2));
 	    }
-	    i++;
-	}
-	else {
-	    const unsigned char * input;
-	    input = key + i;
-	    if (c >= 0xf0 && c <= 0xf4) {
+	    // Increment i
+	    i += 2;
+	    break;
+
+	case 0xe0:
+	case 0xe1:
+	case 0xe2:
+	case 0xe3:
+	case 0xe4:
+	case 0xe5:
+	case 0xe6:
+	case 0xe7:
+	case 0xe8:
+	case 0xe9:
+	case 0xea:
+	case 0xeb:
+	case 0xec:
+	case 0xed:
+	case 0xee:
+	case 0xef:
+	    d = key[i + 1];
+	    e = key[i + 2];
+	    if (d < 0x80 || d > 0xBF ||
+		e < 0x80 || e > 0xBF) {
+		BADUTF8;
+	    }
+	    if (! jc->no_javascript_safe &&
+		c == 0xe2 && d == 0x80 && 
+		(e == 0xa8 || e == 0xa9)) {
+		CALL (add_one_u (jc, 0x2028 + e - 0xa8));
+	    }
+	    else {
 		if (jc->unicode_escape_all) {
 		    unsigned int u;
-		    u = (input[0] & 0x07) << 18
-		      | (input[1] & 0x3F) << 12
-		      | (input[2] & 0x3F) <<  6
-		      | (input[3] & 0x3F);
-		    add_u (jc, u);
-		}
-		else {
-		    CALL (add_str_len (jc, (const char *) input, 2));
-		}
-		i += 4;
-	    }
-	    else if ((c & 0xE0) == 0xE0) {
-		/* Three byte case. */
-		if (input[1] < 0x80 || input[1] > 0xBF ||
-		    input[2] < 0x80 || input[2] > 0xBF) {
-		    warn ("Invalid UTF-8");
-		    return json_create_unicode_bad_utf8;
-		}
-		if (! jc->no_javascript_safe &&
-		    c == 0xe2 && input[1] == 0x80 && 
-		    (input[2] == 0xa8 || input[2] == 0xa9)) {
-		    CALL (add_one_u (jc, 0x2028 + input[2] - 0xa8));
-		    i += 3;
-		}
-		else {
-		    if (jc->unicode_escape_all) {
-			unsigned int u;
-			u = (input[0] & 0x0F)<<12
-			    | (input[1] & 0x3F)<<6
-			    | (input[2] & 0x3F);
-			CALL (add_u (jc, u));
-		    }
-		    else {
-			CALL (add_str_len (jc, (const char *) input, 3));
-		    }
-		}
-		i += 3;
-	    }
-	    else if ((c & 0xC0) == 0xC0) {
-		/* Two byte case. */
-		if (input[1] < 0x80 || input[1] > 0xBF) {
-		    warn ("Invalid UTF-8");
-		    return json_create_unicode_bad_utf8;
-		}
-		if (jc->unicode_escape_all) {
-		    unsigned int u;
-		    u = (input[0] & 0x1F)<<6
-		      | (input[1] & 0x3F);
+		    u = (c & 0x0F)<<12
+		      | (d & 0x3F)<<6
+		      | (e & 0x3F);
 		    CALL (add_u (jc, u));
 		}
 		else {
-		    CALL (add_str_len (jc, (const char *) input, 2));
+		    CALL (add_str_len (jc, (const char *) key + i, 3));
 		}
-		i += 2;
+	    }
+	    // Increment i
+	    i += 3;
+	    break;
+
+	case 0xf0:
+	case 0xf1:
+	case 0xf2:
+	case 0xf3:
+	case 0xf4:
+	    if (jc->unicode_escape_all) {
+		unsigned int u;
+		const unsigned char * input;
+		input = key + i;
+		u = (input[0] & 0x07) << 18
+		  | (input[1] & 0x3F) << 12
+		  | (input[2] & 0x3F) <<  6
+		  | (input[3] & 0x3F);
+		add_u (jc, u);
 	    }
 	    else {
-		warn ("Invalid UTF-8");
-		return json_create_unicode_bad_utf8;
+		CALL (add_str_len (jc, (const char *) key + i, 2));
 	    }
-	    if (! jc->unicode_now) {
-		jc->non_unicode = 1;
-	    }
-	}
-	if (j == i) {
-	    fprintf (stderr, "Failed to increment %d %d\n", i, j);
+	    // Increment i
+	    i += 4;
 	    break;
+
+	case 0xf5:
+	case 0xf6:
+	case 0xf7:
+	case 0xf8:
+	case 0xf9:
+	case 0xfa:
+	case 0xfb:
+	case 0xfc:
+	case 0xfd:
+	case 0xfe:
+	case 0xff:
+	    BADUTF8;
 	}
-	/* Unicode verification switch statements copied from
-	   JSON::Parse will go here. */
     }
     CALL (add_char (jc, '"'));
     return json_create_ok;
@@ -442,22 +735,14 @@ json_create_add_string (json_create_t * jc, SV * input)
     char * istring;
     STRLEN ilength;
     /*
-      "jc->unicode_now" is true (equals 1) if Perl says that "input"
-      contains a "SvUTF8" scalar, and false (equals 0) if Perl does
-      not say that "input" contains a "SvUTF8" scalar.
-
       "jc->unicode" is true if Perl says that anything in the whole of
       the input to "json_create" is a "SvUTF8" scalar.
     */
-    jc->unicode_now = 0;
     istring = SvPV (input, ilength);
     if (SvUTF8 (input)) {
 	/* We have to force everything in the whole output to
 	   Unicode. */
 	jc->unicode = 1;
-	/* Flag that this string is supposed to be Unicode to the
-	   upstream. */
-	jc->unicode_now = 1;
     }
     /* Backtrace fall through, remember to check the caller's line. */
     return json_create_add_key_len (jc, (unsigned char *) istring,
@@ -706,16 +991,11 @@ json_create_add_object (json_create_t * jc, HV * input_hv)
 	HE * he;
 
 	/* Get the information from the hash. */
-
-	/* The key is not unicode unless Perl tells us it's
-	   unicode. */
-	jc->unicode_now = 0;
 	/* The following is necessary because "hv_iternextsv" doesn't
 	   tell us whether the key is "SvUTF8" or not. */
 	he = hv_iternext (input_hv);
 	if (HeUTF8 (he)) {
 	    jc->unicode = 1;
-	    jc->unicode_now = 1;
 	}
 	key = hv_iterkey (he, & keylen);
 	value = hv_iterval (input_hv, he);
@@ -756,44 +1036,6 @@ json_create_add_array (json_create_t * jc, AV * av)
     return json_create_ok;
 }
 
-/*
-
-Copied from
-
-https://metacpan.org/source/TOBYINK/match-simple-XS-0.001/XS.xs#L11
-
-via
-
-http://grep.cpan.me/?q=SvRX
-
-*/
-
-#ifndef SvRXOK
- 
-#define SvRXOK(sv) is_regexp(aTHX_ sv)
- 
-static INLINE int
-is_regexp (pTHX_ SV* sv)
-{
-    SV* tmpsv;
-         
-    if (SvMAGICAL (sv)) {
-	mg_get (sv);
-    }
-         
-    if (SvROK (sv)
-        && (tmpsv = (SV*) SvRV (sv))
-        && SvTYPE (tmpsv) == SVt_PVMG 
-        && (mg_find (tmpsv, PERL_MAGIC_qr))) {
-	return TRUE;
-    }
-    return FALSE;
-}
- 
-#endif
-
-/* <-- End of Toby Inkster contribution. Thank you. */
-
 #define UNKNOWN_TYPE_FAIL(t)				\
     if (JCEH) {						\
 	(*JCEH) (__FILE__, __LINE__,			\
@@ -822,8 +1064,9 @@ json_create_validate_user_json (json_create_t * jc, SV * json)
 	return json_create_ok;
     }
     if (SvOK (error) && SvCUR (error) > 0) {
-	warn ("JSON::Parse::assert_valid_json failed for '%s': %s",
-	      SvPV_nolen (json), SvPV_nolen (error));
+	json_create_user_message (jc, json_create_invalid_user_json,
+				  "JSON::Parse::assert_valid_json failed for '%s': %s",
+				  SvPV_nolen (json), SvPV_nolen (error));
 	return json_create_invalid_user_json;
     }
     return json_create_ok;
@@ -847,11 +1090,7 @@ json_create_call_to_json (json_create_t * jc, SV * cv, SV * r)
     //https://metacpan.org/source/AMBS/Math-GSL-0.35/swig/gsl_typemaps.i#L482
     XPUSHs (sv_2mortal(newRV(r)));
     PUTBACK;
-    count = call_sv (cv, 0);
-    if (count != 1) {
-	warn ("Wrong number of arguments %ld from user callback: should be 1",
-	      count);
-    }
+    call_sv (cv, 0);
     json = POPs;
     SvREFCNT_inc (json);
     FREETMPS;
@@ -866,16 +1105,26 @@ json_create_call_to_json (json_create_t * jc, SV * cv, SV * r)
 }
 
 static INLINE json_create_status_t
+json_create_handle_unknown_type (json_create_t * jc, SV * r)
+{
+    if (jc->type_handler) {
+	CALL (json_create_call_to_json (jc, jc->type_handler, r));
+    }
+    else {
+	json_create_user_message (jc, json_create_unknown_type,
+				  "Input's type cannot be serialized to JSON");
+	return json_create_unknown_type;
+    }
+    return json_create_ok;
+}
+
+static INLINE json_create_status_t
 json_create_handle_ref (json_create_t * jc, SV * input)
 {
     svtype t;
     SV * r;
     r = SvRV (input);
     t = SvTYPE (r);
-    /* First try a switch for the types which have been in Perl
-       for a while. We can't add the case of SVt_REGEXP here since
-       it's not present in some older Perls, so we test for
-       regexes in the default: case at the bottom. */
     switch (t) {
     case SVt_PVAV:
 	CALL (json_create_add_array (jc, (AV *) r));
@@ -908,27 +1157,8 @@ json_create_handle_ref (json_create_t * jc, SV * input)
 	CALL (json_create_add_string (jc, r));
 	break;
 
-    case SVt_PVCV:
-	if (jc->code_ref_handler) {
-	    CALL (json_create_call_to_json (jc, jc->code_ref_handler, r));
-	}
-	else {
-	    warn ("Code reference cannot be serialized to JSON");
-	    return json_create_code_ref_found;
-	}
-	break;
-
     default:
-	/* Test for regex, possibly using the Toby Inkster code
-	   above. */
-	if (SvRXOK (r)) {
-	    /* Use it as a string. */
-	    CALL (json_create_add_string (jc, r));
-	}
-	else {
-	    warn ("Input's type cannot be serialized to JSON");
-	    return json_create_unknown_type;
-	}
+	CALL (json_create_handle_unknown_type (jc, r));
     }
     return json_create_ok;
 }
@@ -1093,7 +1323,7 @@ json_create_recursively (json_create_t * jc, SV * input)
 	    break;
 	    
 	default:
-	    UNKNOWN_TYPE_FAIL (t);
+	    CALL (json_create_handle_unknown_type (jc, r));
 	}
     }
     return json_create_ok;
@@ -1139,8 +1369,6 @@ json_create_run (json_create_t * jc, SV * input)
     jc->output = 0;
     /* Not Unicode. */
     jc->unicode = 0;
-    /* So far we have not seen any non-Unicode bytes over 0x80. */
-    jc->non_unicode = 0;
 
     /* Unleash the dogs. */
     FINALCALL (json_create_recursively (jc, input));
@@ -1148,24 +1376,6 @@ json_create_run (json_create_t * jc, SV * input)
     FINALCALL (json_create_buffer_fill (jc));
 
     if (jc->unicode) {
-
-    /* At least one of the SVs was Unicoded, so switch on the Unicode
-       flag in jc->output.
-
-       We also checked that there was nothing with a non-ASCII byte in
-       an SV not marked as Unicode, so we are now going to trust that
-       the user did not send insane inputs. */
-
-	if (jc->non_unicode) {
-
-	    /* If there was something with a non-ASCII byte not marked
-	       as Unicode, we're going to just refuse to encode it. */
-
-	    warn ("Mixed multibyte and binary inputs, "
-		  "refusing to encode to JSON");
-	    SvREFCNT_dec (jc->output);
-	    return & PL_sv_undef;
-	}
 	SvUTF8_on (jc->output);
     }
 
@@ -1178,14 +1388,13 @@ json_create_run (json_create_t * jc, SV * input)
 /* Master routine, callers should only ever use this. Everything above
    is only for the sake of "json_create" to use. */
 
-static SV *
+static INLINE SV *
 json_create (SV * input)
 {
     /* With all the options, this really needs to be blanked out. Thus
        "buffer" is moved from being inside "jc" to being inside
        "json_create_run" above. */
     json_create_t jc = {0};
-
     /* Set up the default options. */
 
     /* Floating point number format. */
@@ -1195,10 +1404,16 @@ json_create (SV * input)
 
     jc.unicode_escape_all = 0;
     jc.handlers = 0;
-    jc.code_ref_handler = 0;
-
+    jc.type_handler = 0;
     return json_create_run (& jc, input);
 }
+
+/*  __  __      _   _               _     
+   |  \/  | ___| |_| |__   ___   __| |___ 
+   | |\/| |/ _ \ __| '_ \ / _ \ / _` / __|
+   | |  | |  __/ |_| | | | (_) | (_| \__ \
+   |_|  |_|\___|\__|_| |_|\___/ \__,_|___/ */
+                                       
 
 static json_create_status_t
 json_create_new (json_create_t ** jc_ptr)
@@ -1208,7 +1423,7 @@ json_create_new (json_create_t ** jc_ptr)
     jc->n_mallocs = 0;
     jc->n_mallocs++;
     jc->fformat = 0;
-    jc->code_ref_handler = 0;
+    jc->type_handler = 0;
     jc->handlers = 0;
     * jc_ptr = jc;
     return json_create_ok;
@@ -1264,11 +1479,11 @@ json_create_remove_handlers (json_create_t * jc)
 }
 
 static json_create_status_t
-json_create_remove_code_handler (json_create_t * jc)
+json_create_remove_type_handler (json_create_t * jc)
 {
-    if (jc->code_ref_handler) {
-	SvREFCNT_dec (jc->code_ref_handler);
-	jc->code_ref_handler = 0;
+    if (jc->type_handler) {
+	SvREFCNT_dec (jc->type_handler);
+	jc->type_handler = 0;
 	jc->n_mallocs--;
     }
     return json_create_ok;
@@ -1279,7 +1494,7 @@ json_create_free (json_create_t * jc)
 {
     CALL (json_create_free_fformat (jc));
     CALL (json_create_remove_handlers (jc));
-    CALL (json_create_remove_code_handler (jc));
+    CALL (json_create_remove_type_handler (jc));
 
     /* Finished, check we have no leaks before freeing. */
 
