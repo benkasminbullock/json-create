@@ -43,6 +43,7 @@ my %WriteMakefileArgs = (
 	# Used in the PP version
 	'Scalar::Util' => 0,
     },
+#    CC => 'gcc48',
     TEST_REQUIRES => $tr,
     META_MERGE => {
 	'meta-spec' => {
@@ -76,5 +77,5 @@ unless ( eval { ExtUtils::MakeMaker->VERSION(6.63_03) } ) {
  
 WriteMakefile(
     %WriteMakefileArgs,
-#    OPTIMIZE => '-g -Wall -O2',
+#    OPTIMIZE => '-g -Wall -O2 -S',
 );

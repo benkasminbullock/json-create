@@ -193,7 +193,7 @@ add_char (json_create_t * jc, unsigned char c)
     CHECKLENGTH;
     return json_create_ok;
 }
-
+#define add_char_unsafe(jc,c) jc->buffer[jc->length++] = c;
 /* Add a nul-terminated string to "jc", up to the nul byte. This
    should not be used unless it's strictly necessary, prefer to use
    "add_str_len" instead. This is not intended to be Unicode-safe, it
@@ -322,7 +322,7 @@ json_create_add_key_len (json_create_t * jc, const unsigned char * key, STRLEN k
     l = 0;
     CALL (add_char (jc, '"'));
     for (i = 0; i < keylen; ) {
-	unsigned char c, d, e, f;
+	unsigned char c, d, e;
 	c = key[i];
 	switch (c) {
 	case 000:
@@ -705,7 +705,7 @@ json_create_add_key_len (json_create_t * jc, const unsigned char * key, STRLEN k
 		add_u (jc, u);
 	    }
 	    else {
-		CALL (add_str_len (jc, (const char *) key + i, 2));
+		CALL (add_str_len (jc, (const char *) key + i, 4));
 	    }
 	    // Increment i
 	    i += 4;
@@ -1076,7 +1076,6 @@ json_create_validate_user_json (json_create_t * jc, SV * json)
 static json_create_status_t
 json_create_call_to_json (json_create_t * jc, SV * cv, SV * r)
 {
-    I32 count;
     SV * json;
     char * jsonc;
     STRLEN jsonl;
