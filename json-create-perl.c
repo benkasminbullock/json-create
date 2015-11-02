@@ -194,6 +194,8 @@ add_char (json_create_t * jc, unsigned char c)
     return json_create_ok;
 }
 
+#define add_char_unsafe(jc, c) jc->buffer[jc->length++] = c
+
 /* Add a nul-terminated string to "jc", up to the nul byte. This
    should not be used unless it's strictly necessary, prefer to use
    "add_str_len" instead. This is not intended to be Unicode-safe, it
@@ -320,412 +322,244 @@ json_create_add_key_len (json_create_t * jc, const unsigned char * key, STRLEN k
     int i;
     int l;
     l = 0;
-    CALL (add_char (jc, '"'));
+    add_char_unsafe (jc, '"');
     for (i = 0; i < keylen; ) {
-	unsigned char c, d, e, f;
+	unsigned char c;
 	c = key[i];
-	switch (c) {
-	case 000:
-	case 001:
-	case 002:
-	case 003:
-	case 004:
-	case 005:
-	case 006:
-	case 007:
-	    CALL (add_one_u (jc, (unsigned int) c));
-	    // Increment i
+	if (c < 0x20) {
+	    if (c =='\b') {
+		ADD ("\\b");
+	    }
+	    else if (c == '\t') {
+		ADD ("\\t");
+	    }
+	    else if (c == '\n') {
+		ADD ("\\n");
+	    }
+	    else if (c == '\f') {
+		ADD ("\\f");
+	    }
+	    else if (c == '\r') {
+		ADD ("\\r");
+	    }
+	    else {
+		/* We know c is less than 0x10000, so we can use
+		   "add_one_u" not "add_u" here. */
+		CALL (add_one_u (jc, (unsigned int) c));
+	    }
 	    i++;
-	    break;
-	case '\b':
-	    ADD ("\\b");
-	    // Increment i
-	    i++;
-	    break;
-	case '\t':
-	    ADD ("\\t");
-	    // Increment i
-	    i++;
-	    break;
-	case '\n':
-	    ADD ("\\n");
-	    // Increment i
-	    i++;
-	    break;
-
-	case 013:
-	    CALL (add_one_u (jc, (unsigned int) 013));
-	    // Increment i
-	    i++;
-	    break;
-
-	case '\f':
-	    ADD ("\\f");
-	    // Increment i
-	    i++;
-	    break;
-
-	case '\r':
-	    ADD ("\\r");
-	    // Increment i
-	    i++;
-	    break;
-
-	case 016:
-	case 017:
-	case 020:
-	case 021:
-	case 022:
-	case 023:
-	case 024:
-	case 025:
-	case 026:
-	case 027:
-	case 030:
-	case 031:
-	case 032:
-	case 033:
-	case 034:
-	case 035:
-	case 036:
-	case 037:
-	    /* We know c is less than 0x10000, so we can use
-	       "add_one_u" not "add_u" here. */
-	    CALL (add_one_u (jc, (unsigned int) c));
-	    // Increment i
-	    i++;
-	    break;
-
-
-	case 0x20:
-	case 0x21:
-	    CALL (add_char (jc, c));
-	    // Increment i
-	    i++;
-	    break;
-
-	case '"':
-	    ADD ("\\\"");
-	    // Increment i
-	    i++;
-	    break;
-
-	case 0x23:
-	case 0x24:
-	case 0x25:
-	case 0x26:
-	case 0x27:
-	case 0x28:
-	case 0x29:
-	case 0x2a:
-	case 0x2b:
-	case 0x2c:
-	case 0x2d:
-	case 0x2e:
-	    CALL (add_char (jc, c));
-	    // Increment i
-	    i++;
-	    break;
-
-	case '/':
-	    if (jc->escape_slash) {
+	}
+	else if (c < 0x80) {
+	    if (c == '"') {
+		ADD ("\\\"");
+	    }
+	    else if (c == '\\') {
+		ADD ("\\\\");
+	    }
+	    else if (c == '/' && jc->escape_slash) {
 		ADD ("\\/");
-		// Increment i
-		i++;
-		break;
-	    }
-	    /* Fall through. */
-
-	case 0x30:
-	case 0x31:
-	case 0x32:
-	case 0x33:
-	case 0x34:
-	case 0x35:
-	case 0x36:
-	case 0x37:
-	case 0x38:
-	case 0x39:
-	case 0x3a:
-	case 0x3b:
-	case 0x3c:
-	case 0x3d:
-	case 0x3e:
-	case 0x3f:
-	case 0x40:
-	case 0x41:
-	case 0x42:
-	case 0x43:
-	case 0x44:
-	case 0x45:
-	case 0x46:
-	case 0x47:
-	case 0x48:
-	case 0x49:
-	case 0x4a:
-	case 0x4b:
-	case 0x4c:
-	case 0x4d:
-	case 0x4e:
-	case 0x4f:
-	case 0x50:
-	case 0x51:
-	case 0x52:
-	case 0x53:
-	case 0x54:
-	case 0x55:
-	case 0x56:
-	case 0x57:
-	case 0x58:
-	case 0x59:
-	case 0x5a:
-	case 0x5b:
-	    CALL (add_char (jc, c));
-	    // Increment i
-	    i++;
-	    break;
-
-	case '\\':
-	    ADD ("\\\\");
-	    // Increment i
-	    i++;
-	    break;
-
-	case 0x5d:
-	case 0x5e:
-	case 0x5f:
-	case 0x60:
-	case 0x61:
-	case 0x62:
-	case 0x63:
-	case 0x64:
-	case 0x65:
-	case 0x66:
-	case 0x67:
-	case 0x68:
-	case 0x69:
-	case 0x6a:
-	case 0x6b:
-	case 0x6c:
-	case 0x6d:
-	case 0x6e:
-	case 0x6f:
-	case 0x70:
-	case 0x71:
-	case 0x72:
-	case 0x73:
-	case 0x74:
-	case 0x75:
-	case 0x76:
-	case 0x77:
-	case 0x78:
-	case 0x79:
-	case 0x7a:
-	case 0x7b:
-	case 0x7c:
-	case 0x7d:
-	case 0x7e:
-	case 0x7f:
-	    CALL (add_char (jc, c));
-	    // Increment i
-	    i++;
-	    break;
-
-	case 0x80:
-	case 0x81:
-	case 0x82:
-	case 0x83:
-	case 0x84:
-	case 0x85:
-	case 0x86:
-	case 0x87:
-	case 0x88:
-	case 0x89:
-	case 0x8a:
-	case 0x8b:
-	case 0x8c:
-	case 0x8d:
-	case 0x8e:
-	case 0x8f:
-	case 0x90:
-	case 0x91:
-	case 0x92:
-	case 0x93:
-	case 0x94:
-	case 0x95:
-	case 0x96:
-	case 0x97:
-	case 0x98:
-	case 0x99:
-	case 0x9a:
-	case 0x9b:
-	case 0x9c:
-	case 0x9d:
-	case 0x9e:
-	case 0x9f:
-	case 0xa0:
-	case 0xa1:
-	case 0xa2:
-	case 0xa3:
-	case 0xa4:
-	case 0xa5:
-	case 0xa6:
-	case 0xa7:
-	case 0xa8:
-	case 0xa9:
-	case 0xaa:
-	case 0xab:
-	case 0xac:
-	case 0xad:
-	case 0xae:
-	case 0xaf:
-	case 0xb0:
-	case 0xb1:
-	case 0xb2:
-	case 0xb3:
-	case 0xb4:
-	case 0xb5:
-	case 0xb6:
-	case 0xb7:
-	case 0xb8:
-	case 0xb9:
-	case 0xba:
-	case 0xbb:
-	case 0xbc:
-	case 0xbd:
-	case 0xbe:
-	case 0xbf:
-	case 0xc0:
-	case 0xc1:
-	    BADUTF8;
-
-	case 0xc2:
-	case 0xc3:
-	case 0xc4:
-	case 0xc5:
-	case 0xc6:
-	case 0xc7:
-	case 0xc8:
-	case 0xc9:
-	case 0xca:
-	case 0xcb:
-	case 0xcc:
-	case 0xcd:
-	case 0xce:
-	case 0xcf:
-	case 0xd0:
-	case 0xd1:
-	case 0xd2:
-	case 0xd3:
-	case 0xd4:
-	case 0xd5:
-	case 0xd6:
-	case 0xd7:
-	case 0xd8:
-	case 0xd9:
-	case 0xda:
-	case 0xdb:
-	case 0xdc:
-	case 0xdd:
-	case 0xde:
-	case 0xdf:
-	    d = key[i + 1];
-	    if (d < 0x80 || d > 0xBF) {
-		BADUTF8;
-	    }
-	    if (jc->unicode_escape_all) {
-		unsigned int u;
-		u = (c & 0x1F)<<6
-		  | (d & 0x3F);
-		CALL (add_u (jc, u));
 	    }
 	    else {
-		CALL (add_str_len (jc, (const char *) key + i, 2));
+		CALL (add_char (jc, c));
 	    }
-	    // Increment i
-	    i += 2;
-	    break;
-
-	case 0xe0:
-	case 0xe1:
-	case 0xe2:
-	case 0xe3:
-	case 0xe4:
-	case 0xe5:
-	case 0xe6:
-	case 0xe7:
-	case 0xe8:
-	case 0xe9:
-	case 0xea:
-	case 0xeb:
-	case 0xec:
-	case 0xed:
-	case 0xee:
-	case 0xef:
-	    d = key[i + 1];
-	    e = key[i + 2];
-	    if (d < 0x80 || d > 0xBF ||
-		e < 0x80 || e > 0xBF) {
+	    i++;
+	}
+	else {
+	    unsigned char d, e, f;
+	    switch (c) {
+	    case 0x80:
+	    case 0x81:
+	    case 0x82:
+	    case 0x83:
+	    case 0x84:
+	    case 0x85:
+	    case 0x86:
+	    case 0x87:
+	    case 0x88:
+	    case 0x89:
+	    case 0x8a:
+	    case 0x8b:
+	    case 0x8c:
+	    case 0x8d:
+	    case 0x8e:
+	    case 0x8f:
+	    case 0x90:
+	    case 0x91:
+	    case 0x92:
+	    case 0x93:
+	    case 0x94:
+	    case 0x95:
+	    case 0x96:
+	    case 0x97:
+	    case 0x98:
+	    case 0x99:
+	    case 0x9a:
+	    case 0x9b:
+	    case 0x9c:
+	    case 0x9d:
+	    case 0x9e:
+	    case 0x9f:
+	    case 0xa0:
+	    case 0xa1:
+	    case 0xa2:
+	    case 0xa3:
+	    case 0xa4:
+	    case 0xa5:
+	    case 0xa6:
+	    case 0xa7:
+	    case 0xa8:
+	    case 0xa9:
+	    case 0xaa:
+	    case 0xab:
+	    case 0xac:
+	    case 0xad:
+	    case 0xae:
+	    case 0xaf:
+	    case 0xb0:
+	    case 0xb1:
+	    case 0xb2:
+	    case 0xb3:
+	    case 0xb4:
+	    case 0xb5:
+	    case 0xb6:
+	    case 0xb7:
+	    case 0xb8:
+	    case 0xb9:
+	    case 0xba:
+	    case 0xbb:
+	    case 0xbc:
+	    case 0xbd:
+	    case 0xbe:
+	    case 0xbf:
+	    case 0xc0:
+	    case 0xc1:
 		BADUTF8;
-	    }
-	    if (! jc->no_javascript_safe &&
-		c == 0xe2 && d == 0x80 && 
-		(e == 0xa8 || e == 0xa9)) {
-		CALL (add_one_u (jc, 0x2028 + e - 0xa8));
-	    }
-	    else {
+
+	    case 0xc2:
+	    case 0xc3:
+	    case 0xc4:
+	    case 0xc5:
+	    case 0xc6:
+	    case 0xc7:
+	    case 0xc8:
+	    case 0xc9:
+	    case 0xca:
+	    case 0xcb:
+	    case 0xcc:
+	    case 0xcd:
+	    case 0xce:
+	    case 0xcf:
+	    case 0xd0:
+	    case 0xd1:
+	    case 0xd2:
+	    case 0xd3:
+	    case 0xd4:
+	    case 0xd5:
+	    case 0xd6:
+	    case 0xd7:
+	    case 0xd8:
+	    case 0xd9:
+	    case 0xda:
+	    case 0xdb:
+	    case 0xdc:
+	    case 0xdd:
+	    case 0xde:
+	    case 0xdf:
+		d = key[i + 1];
+		if (d < 0x80 || d > 0xBF) {
+		    BADUTF8;
+		}
 		if (jc->unicode_escape_all) {
 		    unsigned int u;
-		    u = (c & 0x0F)<<12
-		      | (d & 0x3F)<<6
-		      | (e & 0x3F);
+		    u = (c & 0x1F)<<6
+			| (d & 0x3F);
 		    CALL (add_u (jc, u));
 		}
 		else {
-		    CALL (add_str_len (jc, (const char *) key + i, 3));
+		    CALL (add_str_len (jc, (const char *) key + i, 2));
 		}
-	    }
-	    // Increment i
-	    i += 3;
-	    break;
+		i += 2;
+		break;
 
-	case 0xf0:
-	case 0xf1:
-	case 0xf2:
-	case 0xf3:
-	case 0xf4:
-	    if (jc->unicode_escape_all) {
-		unsigned int u;
-		const unsigned char * input;
-		input = key + i;
-		u = (input[0] & 0x07) << 18
-		  | (input[1] & 0x3F) << 12
-		  | (input[2] & 0x3F) <<  6
-		  | (input[3] & 0x3F);
-		add_u (jc, u);
-	    }
-	    else {
-		CALL (add_str_len (jc, (const char *) key + i, 2));
-	    }
-	    // Increment i
-	    i += 4;
-	    break;
+	    case 0xe0:
+	    case 0xe1:
+	    case 0xe2:
+	    case 0xe3:
+	    case 0xe4:
+	    case 0xe5:
+	    case 0xe6:
+	    case 0xe7:
+	    case 0xe8:
+	    case 0xe9:
+	    case 0xea:
+	    case 0xeb:
+	    case 0xec:
+	    case 0xed:
+	    case 0xee:
+	    case 0xef:
+		d = key[i + 1];
+		e = key[i + 2];
+		if (d < 0x80 || d > 0xBF ||
+		    e < 0x80 || e > 0xBF) {
+		    BADUTF8;
+		}
+		if (! jc->no_javascript_safe &&
+		    c == 0xe2 && d == 0x80 && 
+		    (e == 0xa8 || e == 0xa9)) {
+		    CALL (add_one_u (jc, 0x2028 + e - 0xa8));
+		}
+		else {
+		    if (jc->unicode_escape_all) {
+			unsigned int u;
+			u = (c & 0x0F)<<12
+			    | (d & 0x3F)<<6
+			    | (e & 0x3F);
+			CALL (add_u (jc, u));
+		    }
+		    else {
+			CALL (add_str_len (jc, (const char *) key + i, 3));
+		    }
+		}
+		i += 3;
+		break;
 
-	case 0xf5:
-	case 0xf6:
-	case 0xf7:
-	case 0xf8:
-	case 0xf9:
-	case 0xfa:
-	case 0xfb:
-	case 0xfc:
-	case 0xfd:
-	case 0xfe:
-	case 0xff:
-	    BADUTF8;
+	    case 0xf0:
+	    case 0xf1:
+	    case 0xf2:
+	    case 0xf3:
+	    case 0xf4:
+		if (jc->unicode_escape_all) {
+		    unsigned int u;
+		    const unsigned char * input;
+		    input = key + i;
+		    u = (input[0] & 0x07) << 18
+			| (input[1] & 0x3F) << 12
+			| (input[2] & 0x3F) <<  6
+			| (input[3] & 0x3F);
+		    add_u (jc, u);
+		}
+		else {
+		    CALL (add_str_len (jc, (const char *) key + i, 2));
+		}
+		i += 4;
+		break;
+
+	    case 0xf5:
+	    case 0xf6:
+	    case 0xf7:
+	    case 0xf8:
+	    case 0xf9:
+	    case 0xfa:
+	    case 0xfb:
+	    case 0xfc:
+	    case 0xfd:
+	    case 0xfe:
+	    case 0xff:
+		BADUTF8;
+	    }
 	}
     }
-    CALL (add_char (jc, '"'));
+    add_char_unsafe (jc, '"');
     return json_create_ok;
 }
 
@@ -970,7 +804,7 @@ json_create_add_stringified (json_create_t * jc, SV *r)
 
 #define COMMA					\
     if (i > 0) {				\
-	CALL (add_char (jc, ','));		\
+	add_char_unsafe (jc, ',');		\
     }
 
 /* Given a reference to a hash in "input_hv", recursively process it
@@ -985,7 +819,7 @@ json_create_add_object (json_create_t * jc, HV * input_hv)
     char * key;
     I32 keylen;
 
-    CALL (add_char (jc, '{'));
+    add_char_unsafe (jc, '{');
     n_keys = hv_iterinit (input_hv);
     for (i = 0; i < n_keys; i++) {
 	HE * he;
@@ -1005,10 +839,10 @@ json_create_add_object (json_create_t * jc, HV * input_hv)
 	COMMA;
 	CALL (json_create_add_key_len (jc, (const unsigned char *) key,
 				       (STRLEN) keylen));
-	CALL (add_char (jc, ':'));
+	add_char_unsafe (jc, ':');
 	CALL (json_create_recursively (jc, value));
     }
-    CALL (add_char (jc, '}'));
+    add_char_unsafe (jc, '}');
     return json_create_ok;
 }
 
@@ -1022,7 +856,7 @@ json_create_add_array (json_create_t * jc, AV * av)
     int i;
     SV * value;
 
-    CALL (add_char (jc, '['));
+    add_char_unsafe (jc, '[');
     n_keys = av_len (av) + 1;
     /* This deals correctly with empty arrays, since av_len is -1 if
        the array is empty, so we do not test for a valid n_keys value
@@ -1032,7 +866,7 @@ json_create_add_array (json_create_t * jc, AV * av)
 	value = * (av_fetch (av, i, 0 /* don't delete the array value */));
 	CALL (json_create_recursively (jc, value));
     }
-    CALL (add_char (jc, ']'));
+    add_char_unsafe (jc, ']');
     return json_create_ok;
 }
 
