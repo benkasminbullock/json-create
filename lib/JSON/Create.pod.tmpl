@@ -109,10 +109,12 @@ Perl scalars are converted to strings, JSON integers or JSON floats.
 
 =head3 Strings
 
-As far as possible, strings are written as-is to the JSON. All output
-is checked for Unicode validity. Some whitespace and control
-characters must be escaped for the output to be valid JSON. (See
-L</RFC 7159>.)
+As far as possible, strings are written as-is to the JSON. JSON
+requires Unicode, so all output must be checked for Unicode
+validity. Invalid UTF-8 produces the error L</Invalid UTF-8> and the
+undefined value is returned. [% see('replace_bad_utf8') %]. Some
+whitespace and control characters must be escaped for the output to be
+valid JSON. (See L</RFC 7159>.)
 
 =head4 Control characters and whitespace
 
@@ -446,6 +448,14 @@ produces
 
 [% INCLUDE "exception-out.txt" | xtidy %]
 
+=head3 replace_bad_utf8
+
+    $jc->replace_bad_utf8 (1);
+
+Replace invalid UTF-8 in the inputs with the Unicode replacement
+character U+FFFD, rather than produce the warning or error L</Invalid
+UTF-8>.
+
 =head3 set_fformat
 
     $jc->set_fformat ('%e');
@@ -544,7 +554,7 @@ All diagnostics are warnings by default. [% see('fatal_errors') %].
 
 =item Invalid UTF-8
 
-(Warning) Bytes in a Perl string were not valid UTF-8.
+(Warning) Bytes in a Perl string were not valid UTF-8. [% see('replace_bad_utf8') %].
 
 =item JSON::Parse::assert_valid_json failed
 

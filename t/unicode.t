@@ -140,8 +140,9 @@ use utf8;
     is ($out_combined_noesc, '"'.$combined.'"', "Long UTF-8 processed OK");
 };
 
-TODO: {
-    local $TODO = 'correctly generate escapes';
+#TODO: {
+#    local $TODO = 'correctly generate escapes';
+{
     my $jc = JSON::Create->new ();
     my $bad_utf8 = "\x{99}\x{ff}";
     $jc->fatal_errors (1);
