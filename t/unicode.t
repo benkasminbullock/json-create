@@ -130,6 +130,32 @@ use utf8;
     my $json_spec = "\x{1D11E}";
     my $out_3 = $jc->run ($json_spec);
     is ($out_3, '"\ud834\udd1e"', "surrogate pair json spec");
+
+    my $combined = "\x{10437}\x{24b62}\x{1D11E}\x{10437}x\x{24b62}y\x{1D11E}z";
+    my $out_combined = $jc->run ($combined);
+    is ($out_combined, '"\ud801\udc37\ud852\udf62\ud834\udd1e\ud801\udc37x\ud852\udf62y\ud834\udd1ez"',
+	"combination of things");
+    $jc->unicode_escape_all (0);
+    my $out_combined_noesc = $jc->run ($combined);
+    is ($out_combined_noesc, '"'.$combined.'"', "Long UTF-8 processed OK");
+};
+
+TODO: {
+    local $TODO = 'correctly generate escapes';
+    my $jc = JSON::Create->new ();
+    my $bad_utf8 = "\x{99}\x{ff}";
+    $jc->fatal_errors (1);
+    eval {
+	$jc->run ($bad_utf8);
+    };
+    ok ($@, "Got error with bad UTF-8");
+    $jc->replace_bad_utf8 (1);
+    my $outreplaced;
+    eval {
+	$outreplaced = $jc->run ($bad_utf8);
+    };
+    ok (! $@, "No error with bad UTF-8 and replacement");
+    is ($outreplaced, "\"\x{fffd}\x{fffd}\"");
 };
 
 done_testing ();

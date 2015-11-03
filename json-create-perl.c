@@ -70,6 +70,8 @@ typedef struct json_create {
     unsigned int no_javascript_safe : 1;
     /* Make errors fatal. */
     unsigned int fatal_errors : 1;
+    /* Replace bad UTF-8 with the "replacement character". */
+    unsigned int replace_bad_utf8 : 1;
 }
 json_create_t;
 
@@ -193,7 +195,7 @@ add_char (json_create_t * jc, unsigned char c)
     CHECKLENGTH;
     return json_create_ok;
 }
-#define add_char_unsafe(jc,c) jc->buffer[jc->length++] = c;
+
 /* Add a nul-terminated string to "jc", up to the nul byte. This
    should not be used unless it's strictly necessary, prefer to use
    "add_str_len" instead. This is not intended to be Unicode-safe, it
@@ -305,11 +307,65 @@ add_u (json_create_t * jc, unsigned int u)
     }
 }
 
-#define BADUTF8							\
-    json_create_user_message (jc, json_create_unicode_bad_utf8,	\
-			      "Invalid UTF-8");			\
-    return json_create_unicode_bad_utf8;
+#define BADUTF8								\
+    if (jc->replace_bad_utf8) {						\
+	/* We have to switch on Unicode otherwise the replacement */	\
+	/* characters don't work as intended. */			\
+	jc->unicode = 1;						\
+	CALL (add_str_len (jc, "\xEF\xBF\xBD", 3));			\
+    }									\
+    else {								\
+	json_create_user_message (jc, json_create_unicode_bad_utf8,	\
+				  "Invalid UTF-8");			\
+	return json_create_unicode_bad_utf8;				\
+    }
 
+/* Jump table. Doing it this way is not the fastest possible way, but
+   it's also very difficult for a compiler to mess this
+   up. Theoretically, it would be faster to make a jump table by the
+   compiler from the switch statement, but some compilers sometimes
+   cannot do that. */
+
+/* In this enum, I use three letters as a compromise between
+   readability and formatting. The control character names are from
+   "man ascii" with an X tagged on the end. */
+
+typedef enum {
+    CTL,  // control char, escape to \u
+    BSX,  // backslash b
+    HTX,  // Tab character
+    NLX,  // backslash n, new line
+    NPX,  // backslash f
+    CRX,  // backslash r
+    ASC,  // Non-special ASCII
+    QUO,  // double quote
+    BSL,  // backslash
+    FSL,  // forward slash, "/" 
+    BAD,  // Invalid UTF-8 value.
+    UT2,  // UTF-8, two bytes
+    UT3,  // UTF-8, three bytes
+    UT4,  // UTF-8, four bytes
+}
+jump_t;
+
+static jump_t jump[0x100] = {
+    CTL,CTL,CTL,CTL,CTL,CTL,CTL,CTL,BSX,HTX,NLX,CTL,NPX,CRX,CTL,CTL,
+    CTL,CTL,CTL,CTL,CTL,CTL,CTL,CTL,CTL,CTL,CTL,CTL,CTL,CTL,CTL,CTL,
+    ASC,ASC,QUO,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,FSL,
+    ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,
+    ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,
+    ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,BSL,ASC,ASC,ASC,
+    ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,
+    ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,
+    BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,
+    BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,
+    BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,
+    BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,
+    BAD,BAD,UT2,UT2,UT2,UT2,UT2,UT2,UT2,UT2,UT2,UT2,UT2,UT2,UT2,UT2,
+    UT2,UT2,UT2,UT2,UT2,UT2,UT2,UT2,UT2,UT2,UT2,UT2,UT2,UT2,UT2,UT2,
+    UT3,UT3,UT3,UT3,UT3,UT3,UT3,UT3,UT3,UT3,UT3,UT3,UT3,UT3,UT3,UT3,
+    UT4,UT4,UT4,UT4,UT4,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,
+};
 
 /* Add a string to the buffer with quotes around it and escapes for
    the escapables. */
@@ -318,320 +374,80 @@ static INLINE json_create_status_t
 json_create_add_key_len (json_create_t * jc, const unsigned char * key, STRLEN keylen)
 {
     int i;
-    int l;
-    l = 0;
+
     CALL (add_char (jc, '"'));
     for (i = 0; i < keylen; ) {
 	unsigned char c, d, e;
 	c = key[i];
-	switch (c) {
-	case 000:
-	case 001:
-	case 002:
-	case 003:
-	case 004:
-	case 005:
-	case 006:
-	case 007:
+
+	switch (jump[c]) {
+
+	case CTL:
 	    CALL (add_one_u (jc, (unsigned int) c));
-	    // Increment i
 	    i++;
 	    break;
-	case '\b':
+
+	case BSX:
 	    ADD ("\\b");
-	    // Increment i
 	    i++;
 	    break;
-	case '\t':
+
+	case HTX:
 	    ADD ("\\t");
-	    // Increment i
 	    i++;
 	    break;
-	case '\n':
+
+	case NLX:
 	    ADD ("\\n");
-	    // Increment i
 	    i++;
 	    break;
 
-	case 013:
-	    CALL (add_one_u (jc, (unsigned int) 013));
-	    // Increment i
-	    i++;
-	    break;
-
-	case '\f':
+	case NPX:
 	    ADD ("\\f");
-	    // Increment i
 	    i++;
 	    break;
 
-	case '\r':
+	case CRX:
 	    ADD ("\\r");
-	    // Increment i
 	    i++;
 	    break;
 
-	case 016:
-	case 017:
-	case 020:
-	case 021:
-	case 022:
-	case 023:
-	case 024:
-	case 025:
-	case 026:
-	case 027:
-	case 030:
-	case 031:
-	case 032:
-	case 033:
-	case 034:
-	case 035:
-	case 036:
-	case 037:
-	    /* We know c is less than 0x10000, so we can use
-	       "add_one_u" not "add_u" here. */
-	    CALL (add_one_u (jc, (unsigned int) c));
-	    // Increment i
-	    i++;
-	    break;
-
-
-	case 0x20:
-	case 0x21:
+	case ASC:
 	    CALL (add_char (jc, c));
-	    // Increment i
 	    i++;
 	    break;
 
-	case '"':
+	case QUO:
 	    ADD ("\\\"");
-	    // Increment i
 	    i++;
 	    break;
 
-	case 0x23:
-	case 0x24:
-	case 0x25:
-	case 0x26:
-	case 0x27:
-	case 0x28:
-	case 0x29:
-	case 0x2a:
-	case 0x2b:
-	case 0x2c:
-	case 0x2d:
-	case 0x2e:
-	    CALL (add_char (jc, c));
-	    // Increment i
-	    i++;
-	    break;
-
-	case '/':
+	case FSL:
 	    if (jc->escape_slash) {
 		ADD ("\\/");
-		// Increment i
-		i++;
-		break;
 	    }
-	    /* Fall through. */
-
-	case 0x30:
-	case 0x31:
-	case 0x32:
-	case 0x33:
-	case 0x34:
-	case 0x35:
-	case 0x36:
-	case 0x37:
-	case 0x38:
-	case 0x39:
-	case 0x3a:
-	case 0x3b:
-	case 0x3c:
-	case 0x3d:
-	case 0x3e:
-	case 0x3f:
-	case 0x40:
-	case 0x41:
-	case 0x42:
-	case 0x43:
-	case 0x44:
-	case 0x45:
-	case 0x46:
-	case 0x47:
-	case 0x48:
-	case 0x49:
-	case 0x4a:
-	case 0x4b:
-	case 0x4c:
-	case 0x4d:
-	case 0x4e:
-	case 0x4f:
-	case 0x50:
-	case 0x51:
-	case 0x52:
-	case 0x53:
-	case 0x54:
-	case 0x55:
-	case 0x56:
-	case 0x57:
-	case 0x58:
-	case 0x59:
-	case 0x5a:
-	case 0x5b:
-	    CALL (add_char (jc, c));
-	    // Increment i
+	    else {
+		CALL (add_char (jc, c));
+	    }
 	    i++;
 	    break;
 
-	case '\\':
+	case BSL:
 	    ADD ("\\\\");
-	    // Increment i
 	    i++;
 	    break;
 
-	case 0x5d:
-	case 0x5e:
-	case 0x5f:
-	case 0x60:
-	case 0x61:
-	case 0x62:
-	case 0x63:
-	case 0x64:
-	case 0x65:
-	case 0x66:
-	case 0x67:
-	case 0x68:
-	case 0x69:
-	case 0x6a:
-	case 0x6b:
-	case 0x6c:
-	case 0x6d:
-	case 0x6e:
-	case 0x6f:
-	case 0x70:
-	case 0x71:
-	case 0x72:
-	case 0x73:
-	case 0x74:
-	case 0x75:
-	case 0x76:
-	case 0x77:
-	case 0x78:
-	case 0x79:
-	case 0x7a:
-	case 0x7b:
-	case 0x7c:
-	case 0x7d:
-	case 0x7e:
-	case 0x7f:
-	    CALL (add_char (jc, c));
-	    // Increment i
-	    i++;
-	    break;
-
-	case 0x80:
-	case 0x81:
-	case 0x82:
-	case 0x83:
-	case 0x84:
-	case 0x85:
-	case 0x86:
-	case 0x87:
-	case 0x88:
-	case 0x89:
-	case 0x8a:
-	case 0x8b:
-	case 0x8c:
-	case 0x8d:
-	case 0x8e:
-	case 0x8f:
-	case 0x90:
-	case 0x91:
-	case 0x92:
-	case 0x93:
-	case 0x94:
-	case 0x95:
-	case 0x96:
-	case 0x97:
-	case 0x98:
-	case 0x99:
-	case 0x9a:
-	case 0x9b:
-	case 0x9c:
-	case 0x9d:
-	case 0x9e:
-	case 0x9f:
-	case 0xa0:
-	case 0xa1:
-	case 0xa2:
-	case 0xa3:
-	case 0xa4:
-	case 0xa5:
-	case 0xa6:
-	case 0xa7:
-	case 0xa8:
-	case 0xa9:
-	case 0xaa:
-	case 0xab:
-	case 0xac:
-	case 0xad:
-	case 0xae:
-	case 0xaf:
-	case 0xb0:
-	case 0xb1:
-	case 0xb2:
-	case 0xb3:
-	case 0xb4:
-	case 0xb5:
-	case 0xb6:
-	case 0xb7:
-	case 0xb8:
-	case 0xb9:
-	case 0xba:
-	case 0xbb:
-	case 0xbc:
-	case 0xbd:
-	case 0xbe:
-	case 0xbf:
-	case 0xc0:
-	case 0xc1:
+	case BAD:
 	    BADUTF8;
+	    i++;
+	    break;
 
-	case 0xc2:
-	case 0xc3:
-	case 0xc4:
-	case 0xc5:
-	case 0xc6:
-	case 0xc7:
-	case 0xc8:
-	case 0xc9:
-	case 0xca:
-	case 0xcb:
-	case 0xcc:
-	case 0xcd:
-	case 0xce:
-	case 0xcf:
-	case 0xd0:
-	case 0xd1:
-	case 0xd2:
-	case 0xd3:
-	case 0xd4:
-	case 0xd5:
-	case 0xd6:
-	case 0xd7:
-	case 0xd8:
-	case 0xd9:
-	case 0xda:
-	case 0xdb:
-	case 0xdc:
-	case 0xdd:
-	case 0xde:
-	case 0xdf:
+	case UT2:
 	    d = key[i + 1];
 	    if (d < 0x80 || d > 0xBF) {
 		BADUTF8;
+		i++;
+		break;
 	    }
 	    if (jc->unicode_escape_all) {
 		unsigned int u;
@@ -646,27 +462,14 @@ json_create_add_key_len (json_create_t * jc, const unsigned char * key, STRLEN k
 	    i += 2;
 	    break;
 
-	case 0xe0:
-	case 0xe1:
-	case 0xe2:
-	case 0xe3:
-	case 0xe4:
-	case 0xe5:
-	case 0xe6:
-	case 0xe7:
-	case 0xe8:
-	case 0xe9:
-	case 0xea:
-	case 0xeb:
-	case 0xec:
-	case 0xed:
-	case 0xee:
-	case 0xef:
+	case UT3:
 	    d = key[i + 1];
 	    e = key[i + 2];
 	    if (d < 0x80 || d > 0xBF ||
 		e < 0x80 || e > 0xBF) {
 		BADUTF8;
+		i++;
+		break;
 	    }
 	    if (! jc->no_javascript_safe &&
 		c == 0xe2 && d == 0x80 && 
@@ -689,11 +492,7 @@ json_create_add_key_len (json_create_t * jc, const unsigned char * key, STRLEN k
 	    i += 3;
 	    break;
 
-	case 0xf0:
-	case 0xf1:
-	case 0xf2:
-	case 0xf3:
-	case 0xf4:
+	case UT4:
 	    if (jc->unicode_escape_all) {
 		unsigned int u;
 		const unsigned char * input;
@@ -710,19 +509,6 @@ json_create_add_key_len (json_create_t * jc, const unsigned char * key, STRLEN k
 	    // Increment i
 	    i += 4;
 	    break;
-
-	case 0xf5:
-	case 0xf6:
-	case 0xf7:
-	case 0xf8:
-	case 0xf9:
-	case 0xfa:
-	case 0xfb:
-	case 0xfc:
-	case 0xfd:
-	case 0xfe:
-	case 0xff:
-	    BADUTF8;
 	}
     }
     CALL (add_char (jc, '"'));

@@ -23,7 +23,7 @@ use Cpanel::JSON::XS;
 # Number of repetitions. No matter how large this is made, the results
 # always vary wildly from run to run.
 
-my $count = 4000;
+my $count = 400;
 my $times = 100;
 
 print "Versions used:\n\n";

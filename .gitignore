@@ -19,3 +19,4 @@ README
 unicode.[ch]
 MANIFEST
 makeitfile
+bench.*
