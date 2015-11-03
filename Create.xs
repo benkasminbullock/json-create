@@ -106,6 +106,14 @@ CODE:
 
 
 void
+replace_bad_utf8 (jc, onoff)
+	JSON::Create jc;
+	SV * onoff;
+CODE:
+	jc->replace_bad_utf8 = SvTRUE (onoff) ? 1 : 0;
+
+
+void
 set_handlers (jc, handlers)
 	JSON::Create jc
 	HV * handlers

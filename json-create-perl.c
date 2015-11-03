@@ -70,6 +70,8 @@ typedef struct json_create {
     unsigned int no_javascript_safe : 1;
     /* Make errors fatal. */
     unsigned int fatal_errors : 1;
+    /* Replace bad UTF-8 with the "replacement character". */
+    unsigned int replace_bad_utf8 : 1;
 }
 json_create_t;
 
@@ -307,11 +309,65 @@ add_u (json_create_t * jc, unsigned int u)
     }
 }
 
-#define BADUTF8							\
-    json_create_user_message (jc, json_create_unicode_bad_utf8,	\
-			      "Invalid UTF-8");			\
-    return json_create_unicode_bad_utf8;
+#define BADUTF8								\
+    if (jc->replace_bad_utf8) {						\
+	/* We have to switch on Unicode otherwise the replacement */	\
+	/* characters don't work as intended. */			\
+	jc->unicode = 1;						\
+	CALL (add_str_len (jc, "\xEF\xBF\xBD", 3));			\
+    }									\
+    else {								\
+	json_create_user_message (jc, json_create_unicode_bad_utf8,	\
+				  "Invalid UTF-8");			\
+	return json_create_unicode_bad_utf8;				\
+    }
 
+/* Jump table. Doing it this way is not the fastest possible way, but
+   it's also very difficult for a compiler to mess this
+   up. Theoretically, it would be faster to make a jump table by the
+   compiler from the switch statement, but some compilers sometimes
+   cannot do that. */
+
+/* In this enum, I use three letters as a compromise between
+   readability and formatting. The control character names are from
+   "man ascii" with an X tagged on the end. */
+
+typedef enum {
+    CTL,  // control char, escape to \u
+    BSX,  // backslash b
+    HTX,  // Tab character
+    NLX,  // backslash n, new line
+    NPX,  // backslash f
+    CRX,  // backslash r
+    ASC,  // Non-special ASCII
+    QUO,  // double quote
+    BSL,  // backslash
+    FSL,  // forward slash, "/" 
+    BAD,  // Invalid UTF-8 value.
+    UT2,  // UTF-8, two bytes
+    UT3,  // UTF-8, three bytes
+    UT4,  // UTF-8, four bytes
+}
+jump_t;
+
+static jump_t jump[0x100] = {
+    CTL,CTL,CTL,CTL,CTL,CTL,CTL,CTL,BSX,HTX,NLX,CTL,NPX,CRX,CTL,CTL,
+    CTL,CTL,CTL,CTL,CTL,CTL,CTL,CTL,CTL,CTL,CTL,CTL,CTL,CTL,CTL,CTL,
+    ASC,ASC,QUO,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,FSL,
+    ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,
+    ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,
+    ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,BSL,ASC,ASC,ASC,
+    ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,
+    ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,ASC,
+    BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,
+    BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,
+    BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,
+    BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,
+    BAD,BAD,UT2,UT2,UT2,UT2,UT2,UT2,UT2,UT2,UT2,UT2,UT2,UT2,UT2,UT2,
+    UT2,UT2,UT2,UT2,UT2,UT2,UT2,UT2,UT2,UT2,UT2,UT2,UT2,UT2,UT2,UT2,
+    UT3,UT3,UT3,UT3,UT3,UT3,UT3,UT3,UT3,UT3,UT3,UT3,UT3,UT3,UT3,UT3,
+    UT4,UT4,UT4,UT4,UT4,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,
+};
 
 /* Add a string to the buffer with quotes around it and escapes for
    the escapables. */
@@ -320,6 +376,7 @@ static INLINE json_create_status_t
 json_create_add_key_len (json_create_t * jc, const unsigned char * key, STRLEN keylen)
 {
     int i;
+<<<<<<< HEAD
     int l;
     l = 0;
     add_char_unsafe (jc, '"');
@@ -338,6 +395,82 @@ json_create_add_key_len (json_create_t * jc, const unsigned char * key, STRLEN k
 	    }
 	    else if (c == '\f') {
 		ADD ("\\f");
+=======
+
+    CALL (add_char (jc, '"'));
+    for (i = 0; i < keylen; ) {
+	unsigned char c, d, e;
+	c = key[i];
+
+	switch (jump[c]) {
+
+	case CTL:
+	    CALL (add_one_u (jc, (unsigned int) c));
+	    i++;
+	    break;
+
+	case BSX:
+	    ADD ("\\b");
+	    i++;
+	    break;
+
+	case HTX:
+	    ADD ("\\t");
+	    i++;
+	    break;
+
+	case NLX:
+	    ADD ("\\n");
+	    i++;
+	    break;
+
+	case NPX:
+	    ADD ("\\f");
+	    i++;
+	    break;
+
+	case CRX:
+	    ADD ("\\r");
+	    i++;
+	    break;
+
+	case ASC:
+	    CALL (add_char (jc, c));
+	    i++;
+	    break;
+
+	case QUO:
+	    ADD ("\\\"");
+	    i++;
+	    break;
+
+	case FSL:
+	    if (jc->escape_slash) {
+		ADD ("\\/");
+	    }
+	    else {
+		CALL (add_char (jc, c));
+	    }
+	    i++;
+	    break;
+
+	case BSL:
+	    ADD ("\\\\");
+	    i++;
+	    break;
+
+	case BAD:
+	    BADUTF8;
+	    i++;
+	    break;
+
+	case UT2:
+	    d = key[i + 1];
+	    if (d < 0x80 || d > 0xBF) {
+		BADUTF8;
+		i++;
+		break;
+>>>>>>> bigswitch
 	    }
 	    else if (c == '\r') {
 		ADD ("\\r");
@@ -347,11 +480,26 @@ json_create_add_key_len (json_create_t * jc, const unsigned char * key, STRLEN k
 		   "add_one_u" not "add_u" here. */
 		CALL (add_one_u (jc, (unsigned int) c));
 	    }
+<<<<<<< HEAD
 	    i++;
 	}
 	else if (c < 0x80) {
 	    if (c == '"') {
 		ADD ("\\\"");
+=======
+	    // Increment i
+	    i += 2;
+	    break;
+
+	case UT3:
+	    d = key[i + 1];
+	    e = key[i + 2];
+	    if (d < 0x80 || d > 0xBF ||
+		e < 0x80 || e > 0xBF) {
+		BADUTF8;
+		i++;
+		break;
+>>>>>>> bigswitch
 	    }
 	    else if (c == '\\') {
 		ADD ("\\\\");
@@ -481,6 +629,7 @@ json_create_add_key_len (json_create_t * jc, const unsigned char * key, STRLEN k
 		i += 2;
 		break;
 
+<<<<<<< HEAD
 	    case 0xe0:
 	    case 0xe1:
 	    case 0xe2:
@@ -557,6 +706,25 @@ json_create_add_key_len (json_create_t * jc, const unsigned char * key, STRLEN k
 	    case 0xff:
 		BADUTF8;
 	    }
+=======
+	case UT4:
+	    if (jc->unicode_escape_all) {
+		unsigned int u;
+		const unsigned char * input;
+		input = key + i;
+		u = (input[0] & 0x07) << 18
+		  | (input[1] & 0x3F) << 12
+		  | (input[2] & 0x3F) <<  6
+		  | (input[3] & 0x3F);
+		add_u (jc, u);
+	    }
+	    else {
+		CALL (add_str_len (jc, (const char *) key + i, 4));
+	    }
+	    // Increment i
+	    i += 4;
+	    break;
+>>>>>>> bigswitch
 	}
     }
     add_char_unsafe (jc, '"');
@@ -910,7 +1078,6 @@ json_create_validate_user_json (json_create_t * jc, SV * json)
 static json_create_status_t
 json_create_call_to_json (json_create_t * jc, SV * cv, SV * r)
 {
-    I32 count;
     SV * json;
     char * jsonc;
     STRLEN jsonl;
