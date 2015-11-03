@@ -7,7 +7,7 @@ require Exporter;
 );
 use warnings;
 use strict;
-our $VERSION = '0.11';
+our $VERSION = '0.12';
 require XSLoader;
 XSLoader::load ('JSON::Create', $VERSION);
 
@@ -52,6 +52,15 @@ sub obj
 	my $value = $handlers{$item};
 	# Check it's a code reference somehow.
 	$handlers->{$item} = $value;
+    }
+}
+
+sub del
+{
+    my ($obj, @list) = @_;
+    my $handlers = $obj->get_handlers ();
+    for my $item (@list) {
+	delete $handlers->{$item};
     }
 }
 

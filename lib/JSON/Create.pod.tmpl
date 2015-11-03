@@ -18,22 +18,20 @@ produces
 
 =head1 DESCRIPTION
 
-This module produces JSON out of Perl. It offers a simple default
-function L</create_json> which converts Perl into JSON using common
-defaults, and a customizable object created with L</new> where the
-user can specify a variety of behaviours. For example, Unicode
-escaping into ASCII via L</unicode_escape_all>, floating point number
-formatting via L</set_fformat>, escaping of slashes (/) with
-L</escape_slash>, JSON serialization of objects with L</obj>, or
-boolean handling with L</bool>.
+This module produces JSON out of Perl. It offers a function
+L</create_json> which converts Perl into JSON using common defaults,
+and a customizable object created with L</new> where the user can
+specify a variety of behaviours. For example, Unicode escaping into
+ASCII via L</unicode_escape_all>, floating point number formatting via
+L</set_fformat>, escaping of slashes (/) with L</escape_slash>, JSON
+serialization of objects with L</obj>, or boolean handling with
+L</bool>.
 
 In all cases, errors in processing result in a warning and an
 undefined return value. [% see('fatal_errors') %].
 
 This module is a companion to L<JSON::Parse> for parsing JSON into
 Perl.
-
-=head1 EXAMPLES
 
 The example programs in this documentation are all found in the
 directory F<examples/> in the distribution. All the outputs below are
@@ -325,37 +323,6 @@ yourself, the tests will just be skipped.
 
 More modules will be added to this list as time permits.
 
-=head3 type_handler
-
-    $jc->type_handler (sub {return 'null'});
-
-By default, when JSON::Create encounters a type such as a glob or code
-reference which it doesn't know what to do with, it prints a warning
-and returns an undefined value. See L</Code, regexes, and other
-references>.  The method C<type_handler> sets up a callback which is
-called when an unhandled type is found in the input. For example, if
-you want to put the JSON literal C<null> in the output when you find
-an unhandled type rather than print an error, the above example will
-do it.
-
-Here is an example showing a few possibilities:
-
-[% INCLUDE "type-handler.pl" | xtidy %]
-
-outputs
-
-[% INCLUDE "type-handler-out.txt" | xtidy %]
-
-The type handler function you supply will be called with one value,
-the reference it is supposed to handle, and should return one value, a
-valid JSON string.  If you want to have your return value validated,
-use the L</validate> option (see below).
-
-Type handler callbacks are handled in the same way that object
-callbacks are handled, so please see the discussion at L</obj> for how
-to handle errors and how to deal with routines requiring multiple
-values.
-
 =head3 escape_slash
 
     $jc->escape_slash (1);
@@ -471,6 +438,37 @@ outputs
 
 [% INCLUDE "set-fformat-out.txt" | xtidy %]
 
+=head3 type_handler
+
+    $jc->type_handler (sub {return 'null'});
+
+By default, when JSON::Create encounters a type such as a glob or code
+reference which it doesn't know what to do with, it prints a warning
+and returns an undefined value. See L</Code, regexes, and other
+references>.  The method C<type_handler> sets up a callback which is
+called when an unhandled type is found in the input. For example, if
+you want to put the JSON literal C<null> in the output when you find
+an unhandled type rather than print an error, the above example will
+do it.
+
+Here is an example showing a few possibilities:
+
+[% INCLUDE "type-handler.pl" | xtidy %]
+
+outputs
+
+[% INCLUDE "type-handler-out.txt" | xtidy %]
+
+The type handler function you supply will be called with one value,
+the reference it is supposed to handle, and should return one value, a
+valid JSON string.  If you want to have your return value validated,
+use the L</validate> option (see below).
+
+Type handler callbacks are handled in the same way that object
+callbacks are handled, so please see the discussion at L</obj> for how
+to handle errors and how to deal with routines requiring multiple
+values.
+
 =head3 unicode_escape_all
 
     $jc->unicode_escape_all (1);
@@ -576,6 +574,8 @@ JSON::Create object.
 
 There are a few remaining undecided issues around the default object
 serialization.
+
+There is no way to customize output of NaN and infinity.
 
 =head1 PERFORMANCE
 

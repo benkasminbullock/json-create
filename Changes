@@ -1,4 +1,4 @@
-0.11 2015-11-02
+0.12 2015-11-02
 * String processing improvements
 * Fix bug in JavaScript escaping
 * Fix bug in 4-byte UTF-8 strings

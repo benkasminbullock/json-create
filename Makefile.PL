@@ -43,7 +43,7 @@ my %WriteMakefileArgs = (
 	# Used in the PP version
 	'Scalar::Util' => 0,
     },
-    CC => 'gcc48',
+#    CC => 'gcc48',
     TEST_REQUIRES => $tr,
     META_MERGE => {
 	'meta-spec' => {
