@@ -137,7 +137,7 @@ OUTPUT:
 	RETVAL
 
 void
-type_handler (jc, crh)
+type_handler (jc, crh = & PL_sv_undef)
 	JSON::Create jc;
 	SV * crh;
 CODE:
@@ -146,6 +146,19 @@ CODE:
 	if (SvTRUE (crh)) {
 	    jc->type_handler = crh;
 	    SvREFCNT_inc (crh);
+	    jc->n_mallocs++;
+	}
+
+void
+obj_handler (jc, oh = & PL_sv_undef)
+	JSON::Create jc;
+	SV * oh;
+CODE:
+	/* Remove a previous ref handler, if it exists. */
+	PERLJCCALL (json_create_remove_obj_handler (jc));
+	if (SvTRUE (oh)) {
+	    jc->obj_handler = oh;
+	    SvREFCNT_inc (oh);
 	    jc->n_mallocs++;
 	}
 

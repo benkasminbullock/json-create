@@ -42,6 +42,8 @@ my %WriteMakefileArgs = (
 	'Carp' => 0,
 	# Used in the PP version
 	'Scalar::Util' => 0,
+	# Used in the PP version
+	'POSIX' => 0,
     },
 #    CC => 'gcc48',
     TEST_REQUIRES => $tr,

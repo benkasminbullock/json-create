@@ -24,4 +24,4 @@ MYMETA..*
 ^make-pod\.pl$
 ^timesheet\.txt$
 # Benchmarks
-^bench\./*$
+^bench\..*$

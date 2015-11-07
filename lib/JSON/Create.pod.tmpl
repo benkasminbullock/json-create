@@ -2,6 +2,9 @@
 [% MACRO see(method) BLOCK -%]
 This behaviour can be altered with the method L</[% method %]>
 [%- END %]
+[% MACRO since(version) BLOCK -%]
+This was added in version [% version %] of the module.
+[%- END %]
 =encoding UTF-8
 
 =head1 NAME
@@ -150,7 +153,7 @@ Terminators").
 =head4 Other escapes
 
 The forward slash, /, known as "solidus" in the JSON specification,
-does not have to be escaped, and L</json_create>'s default is not to
+does not have to be escaped, and L</create_json>'s default is not to
 escape it. [% see('escape_slash') %].
 
 Other Unicode values are not escaped.  [% see('unicode_escape_all')
@@ -196,10 +199,18 @@ can be converted to booleans using the method L</bool> (see below).
 
 =head2 Other types
 
+=head3 Scalar references
+
+Scalar references are dereferenced then treated as scalars. See
+L</Scalars>.
+
 =head3 Objects
 
-Perl objects (blessed references) are dereferenced and then handed as
-if non-object types. [% see('obj') %].
+By default, Perl objects are handled as if non-object types. In other
+words, unless you specify object handling, the module breaks
+encapsulation. This behaviour can be altered with the method L</obj>
+for individual objects, or you can supply your own object handler with
+L</obj_handler> which deals with all objects.
 
 =head3 Code, regexes, and other references
 
@@ -260,6 +271,9 @@ they're true or false. For example,
 outputs
 
 [% INCLUDE "boolean-out.txt" | xtidy %]
+
+If you prefer to take over all object handling yourself, there is also
+L</obj_handler>, which overrides what is set with C<bool>.
 
 =head4 Interoperability
 
@@ -338,6 +352,8 @@ outputs
 
 [% INCLUDE "escape-slash-out.txt" | xtidy %]
 
+[% since('0.07') %]
+
 =head3 no_javascript_safe
 
     $jc->no_javascript_safe (1);
@@ -415,6 +431,40 @@ produces
 
 [% INCLUDE "exception-out.txt" | xtidy %]
 
+If you prefer to take over all object handling yourself, there is also
+L</obj_handler>.
+
+=head3 obj_handler
+
+    $jc->obj_handler (\& my_obj_handler);
+
+Supply an object handler. If you supply this, all objects will be
+handled by your handler. For example, you can replace all objects with
+'null' or die if an object is found.
+
+[% INCLUDE "obj-handler.pl" | xtidy %]
+
+produces
+
+[% INCLUDE "obj-handler-out.txt" | xtidy %]
+
+You can also do something like what the L<JSON> module does with a
+"try harder" routine which scrabbles around looking for methods:
+
+[% INCLUDE "try-harder.pl" | xtidy %]
+
+This outputs
+
+[% INCLUDE "try-harder-out.txt" | xtidy %]
+
+This C<obj_handler> overrides whatever you have set with L</bool> or
+L</obj>. The routine you use to handle objects may be the same as the
+routine you use to handle types. See L</type_handler>. Validation of
+the return JSON can be carried out using L</validate> if you wish. For
+more details about the callbacks, see L</obj>.
+
+[% since('0.13') %]
+
 =head3 replace_bad_utf8
 
     $jc->replace_bad_utf8 (1);
@@ -422,6 +472,8 @@ produces
 Replace invalid UTF-8 in the inputs with the Unicode replacement
 character U+FFFD, rather than produce the warning or error L</Invalid
 UTF-8>.
+
+[% since(0.12) %]
 
 =head3 set_fformat
 
@@ -437,6 +489,8 @@ buffer overflows within the module.
 outputs
 
 [% INCLUDE "set-fformat-out.txt" | xtidy %]
+
+[% since('0.07') %]
 
 =head3 type_handler
 
@@ -468,6 +522,8 @@ Type handler callbacks are handled in the same way that object
 callbacks are handled, so please see the discussion at L</obj> for how
 to handle errors and how to deal with routines requiring multiple
 values.
+
+[% since('0.10') %]
 
 =head3 unicode_escape_all
 
@@ -507,6 +563,8 @@ If JSON::Parse is installed, and the JSON fails to validate, this will
 produce a warning containing the string and the error produced by
 C<assert_valid_json>, and the return value will be undefined.
 
+[% since('0.07') %]
+
 =head1 EXPORTS
 
 The module exports nothing except by request. One function,
@@ -515,9 +573,8 @@ L</create_json>, is exported on request.
 =head1 INSTALLATION
 
 The module uses C internally, so you need a C compiler to install
-it. There is also an undocumented "pure Perl" module JSON::Create::PP
-in the distribution, which could be used in a pinch. (This is
-basically a reference module though.)
+it. If the compiled library cannot be loaded, there is also a backup
+"pure Perl" module JSON::Create::PP in the distribution.
 
 =head1 SEE ALSO
 
@@ -541,6 +598,10 @@ L<JSON::Parse>. Please see that module's documentation for links to
 the JSON standard itself, a summary of the ever-growing list of JSON
 modules on CPAN (under "SEE ALSO") and the reasons why I decided to
 write these two modules (under "HISTORY").
+
+=item L<JSON::Create::PP>
+
+This is a backup module for JSON::Create in pure Perl.
 
 =back
 
@@ -577,6 +638,9 @@ serialization.
 
 There is no way to customize output of NaN and infinity.
 
+No warning is printed when the user uses clashing methods like
+L</bool> and L</obj_handler>.
+
 =head1 PERFORMANCE
 
 This module is fairly new on the scene, so speed is not a key issue
@@ -590,12 +654,17 @@ L<JSON::XS> and L<Cpanel::JSON::XS>. Outputs look like this:
 
 This only compares a few simple cases in which the output is
 demonstrably correct. Also, at least on my computer, the numbers seem
-to vary wildly from one test to another.
+to vary wildly from one test to another. The benchmarking script also
+contains commented out code to test against L<JSON::DWIW> if you are
+interested.
+
+If you think these benchmarks are unfair, these are the best I've
+got. Please feel free to make better ones and add them.
 
 =head1 HISTORY
 
 This module, and L</JSON::Parse>, and incidentally some other modules
-I've publicly released, such as L</Gzip::Faster>, arose partly out of
+I've publicly released, such as L<Gzip::Faster>, arose partly out of
 dissatisfaction with the design of the existing CPAN modules. My
 feeling is that modules should prominently offer a simple interface to
 catch the most common cases, and then complexity should be added only
@@ -615,10 +684,9 @@ implemented, there are some corner-cases and untested code. I'm also
 changing the design somewhat as I go along without worrying too much
 about backwards compatibility.
 
-The exact time I've spent making this module is recorded in the file
-F<timesheet.txt> in the top directory of the distribution. At the time
-of version 0.10, I've spent 1 day, 6 hours and 41 minutes working
-on this.
+L</obj_handler> was added in version 0.13 of the module. This version
+also added loading of the Pure-Perl version of the module,
+JSON::Create::PP, if the loading of JSON::Create failed.
 
 [% INCLUDE "author" %]
 [% INCLUDE "terminology" %]

@@ -1,3 +1,7 @@
+0.13 2015-11-07
+* Add "obj_handler" method which hands all objects to the user
+* Load PP module if XSLoader fails
+
 0.12 2015-11-02
 * String processing improvements
 * Fix bug in JavaScript escaping

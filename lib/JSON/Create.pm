@@ -7,9 +7,17 @@ require Exporter;
 );
 use warnings;
 use strict;
-our $VERSION = '0.12';
-require XSLoader;
-XSLoader::load ('JSON::Create', $VERSION);
+our $VERSION = '0.13';
+
+eval {
+    require XSLoader;
+    XSLoader::load ('JSON::Create', $VERSION);
+#    die;
+};
+if ($@) {
+    require JSON::Create::PP;
+    JSON::Create::PP->import (':all');
+}
 
 sub set_fformat
 {

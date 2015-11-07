@@ -56,6 +56,8 @@ typedef struct json_create {
     HV * handlers;
     /* User reference handler. */
     SV * type_handler;
+    /* User obj handler. */
+    SV * obj_handler;
     /* Do any of the SVs have a Unicode flag? */
     unsigned int unicode : 1;
     /* Should we convert / into \/? */
@@ -960,77 +962,82 @@ json_create_handle_object (json_create_t * jc, SV * input)
        https://rt.perl.org/Ticket/Display.html?id=126469. */
     objtype = sv_reftype (r, 1);
     if (objtype) {
-	SV ** sv_ptr;
-	I32 olen;
+	if (jc->obj_handler) {
+	    CALL (json_create_call_to_json (jc, jc->obj_handler, r));
+	}
+	else {
+	    SV ** sv_ptr;
+	    I32 olen;
 #ifdef DEBUGOBJ
-	fprintf (stderr, "Have found an object of type %s.\n", objtype);
+	    fprintf (stderr, "Have found an object of type %s.\n", objtype);
 #endif
-	olen = strlen (objtype);
-	sv_ptr = hv_fetch (jc->handlers, objtype, olen, 0);
-	if (sv_ptr) {
-	    char * pv;
-	    STRLEN pvlen;
-	    pv = SvPV (*sv_ptr, pvlen);
+	    olen = strlen (objtype);
+	    sv_ptr = hv_fetch (jc->handlers, objtype, olen, 0);
+	    if (sv_ptr) {
+		char * pv;
+		STRLEN pvlen;
+		pv = SvPV (*sv_ptr, pvlen);
 #ifdef DEBUGOBJ
-	    fprintf (stderr, "Have found a handler %s for %s.\n", pv, objtype);
+		fprintf (stderr, "Have found a handler %s for %s.\n", pv, objtype);
 #endif
-	    if (pvlen == strlen ("bool") &&
-		strncmp (pv, "bool", 4) == 0) {
-		if (SvTRUE (r)) {
-		    ADD ("true");
+		if (pvlen == strlen ("bool") &&
+		    strncmp (pv, "bool", 4) == 0) {
+		    if (SvTRUE (r)) {
+			ADD ("true");
+		    }
+		    else {
+			ADD ("false");
+		    }
+		}
+		else if (SvROK (*sv_ptr)) {
+		    SV * what;
+		    what = SvRV (*sv_ptr);
+		    if (SvROK (what)) {
+			what = SvRV(what);
+		    }
+		    switch (SvTYPE (what)) {
+		    case SVt_PVCV:
+			CALL (json_create_call_to_json (jc, what, r));
+			break;
+		    default:
+			/* Weird handler, not a code reference. */
+			goto nothandled;
+		    }
 		}
 		else {
-		    ADD ("false");
-		}
-	    }
-	    else if (SvROK (*sv_ptr)) {
-		SV * what;
-		what = SvRV (*sv_ptr);
-		if (SvROK (what)) {
-		    what = SvRV(what);
-		}
-		switch (SvTYPE (what)) {
-		case SVt_PVCV:
-		    CALL (json_create_call_to_json (jc, what, r));
-		    break;
-		default:
-		    /* Weird handler, not a code reference. */
-		    goto nothandled;
+		    /* It's an object, it's in our handlers, but we don't
+		       have any code to deal with it, so we'll print an
+		       error and then stringify it. */
+		    if (JCEH) {
+			(*JCEH) (__FILE__, __LINE__, "Unhandled handler %s.\n",
+				 pv);
+			goto nothandled;
+		    }
 		}
 	    }
 	    else {
-		/* It's an object, it's in our handlers, but we don't
-		   have any code to deal with it, so we'll print an
-		   error and then stringify it. */
-		if (JCEH) {
-		    (*JCEH) (__FILE__, __LINE__, "Unhandled handler %s.\n",
-			     pv);
-		    goto nothandled;
-		}
-	    }
-	}
-	else {
 #ifdef DEBUGOBJ
-	    /* Leaving this debugging code here since this is liable
-	       to change a lot. */
-	    I32 hvnum;
-	    SV * s;
-	    char * key;
-	    I32 retlen;
-	    fprintf (stderr, "Nothing in handlers for %s.\n", objtype);
-	    hvnum = hv_iterinit (jc->handlers);
+		/* Leaving this debugging code here since this is liable
+		   to change a lot. */
+		I32 hvnum;
+		SV * s;
+		char * key;
+		I32 retlen;
+		fprintf (stderr, "Nothing in handlers for %s.\n", objtype);
+		hvnum = hv_iterinit (jc->handlers);
 
-	    fprintf (stderr, "There are %ld keys in handlers.\n", hvnum);
-	    while (1) {
-		s = hv_iternextsv (jc->handlers, & key, & retlen);
-		if (! s) {
-		    break;
+		fprintf (stderr, "There are %ld keys in handlers.\n", hvnum);
+		while (1) {
+		    s = hv_iternextsv (jc->handlers, & key, & retlen);
+		    if (! s) {
+			break;
+		    }
+		    fprintf (stderr, "%s: %s\n", key, SvPV_nolen (s));
 		}
-		fprintf (stderr, "%s: %s\n", key, SvPV_nolen (s));
-	    }
 #endif /* 0 */
-	nothandled:
-	    CALL (json_create_handle_ref (jc, input));
+	    nothandled:
+		CALL (json_create_handle_ref (jc, input));
+	    }
 	}
     }
     return json_create_ok;
@@ -1061,7 +1068,7 @@ json_create_recursively (json_create_t * jc, SV * input)
     }
     if (SvROK (input)) {
 	/* We have a reference, so decide what to do with it. */
-	if (sv_isobject (input) && jc->handlers) {
+	if (sv_isobject (input) && (jc->handlers || jc->obj_handler)) {
 	    CALL (json_create_handle_object (jc, input));
 	}
 	else {
@@ -1275,11 +1282,23 @@ json_create_remove_type_handler (json_create_t * jc)
 }
 
 static json_create_status_t
+json_create_remove_obj_handler (json_create_t * jc)
+{
+    if (jc->obj_handler) {
+	SvREFCNT_dec (jc->obj_handler);
+	jc->obj_handler = 0;
+	jc->n_mallocs--;
+    }
+    return json_create_ok;
+}
+
+static json_create_status_t
 json_create_free (json_create_t * jc)
 {
     CALL (json_create_free_fformat (jc));
     CALL (json_create_remove_handlers (jc));
     CALL (json_create_remove_type_handler (jc));
+    CALL (json_create_remove_obj_handler (jc));
 
     /* Finished, check we have no leaks before freeing. */
 

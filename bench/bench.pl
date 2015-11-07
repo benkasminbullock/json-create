@@ -8,6 +8,7 @@ use utf8;
 #use Benchmark ':all';
 use FindBin '$Bin';
 use Time::HiRes;
+use Text::Table::Tiny 'generate_table';
 
 # Just so I can use the latest versions
 
@@ -19,6 +20,7 @@ use lib '/home/ben/projects/json-create/blib/arch';
 use JSON::Create 'create_json';
 use JSON::XS;
 use Cpanel::JSON::XS;
+use JSON::DWIW;
 
 # Number of repetitions. No matter how large this is made, the results
 # always vary wildly from run to run.
@@ -26,19 +28,22 @@ use Cpanel::JSON::XS;
 my $count = 1000;
 my $times = 200;
 
-print "Versions used:\n\n";
+print "Versions used:\n";
 my @modules = qw/Cpanel::JSON::XS JSON::XS JSON::Create/;
+# JSON::DWIW/;
+my @mvp;
 for my $module (@modules) {
     my $abbrev = $module;
     $abbrev =~ s/(\w)\w+\W*/$1/g; 
     my $version = eval "\$${module}::VERSION";
-    printf "%-5s | %20s | %-7s\n", $abbrev, $module, $version;
+    push @mvp, [$abbrev, $module, $version];
 }
-
+print generate_table (rows => \@mvp, separate_rows => 1);
 my %these = (
     'JC' => 'JSON::Create::create_json ($stuff)',
     'JX' => 'JSON::XS::encode_json ($stuff)',
     'CJX' => 'Cpanel::JSON::XS::encode_json ($stuff)',
+#    'JD' => 'JSON::DWIW->new->to_json ($stuff)',
 );
 
 # ASCII string test
@@ -160,13 +165,11 @@ sub cmpthese
     my $min = 1e99;
     my %min;
     my $worst;
+    my @results;
 
     print "Repetitions: $count x $times = ", $count * $times, "\n";
 
-    printf "---------+-------------+------------+----------+\n";
-    printf "%-8s | %11s | %10s | %8s |\n", "module", "1/min", "min", "improve";
-    printf "---------|-------------|------------|----------|\n";
-
+    push @results, ["Module", "1/min", "min", "improve"];
     $worst = 0;
     for my $module (sort keys %these) {
 	$min{$module} = $min;
@@ -182,9 +185,11 @@ sub cmpthese
     }
 
     for my $module (sort keys %these) {
-	printf "%-8s | %11.3f | %10.7f | %2.4f   |\n", $module, $count/$min{$module}, $min{$module}, $worst / $min{$module};
+	my @nums = map {sprintf ("%g", $_)} $count/$min{$module}, $min{$module}, $worst / $min{$module};
+	push @results, [$module, @nums];
     }
-    printf "---------+-------------+------------+----------+\n";
+    print generate_table (rows => \@results, header_row => 1);
+    print "\n";
 }
 
 sub bench
