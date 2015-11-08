@@ -1,3 +1,6 @@
+0.14 2015-11-08
+* Returning the undefined value causes a halt of execution
+
 0.13 2015-11-07
 * Add "obj_handler" method which hands all objects to the user
 * Load PP module if XSLoader fails

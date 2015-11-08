@@ -404,6 +404,10 @@ produces
 
 [% INCLUDE "zilog-out.txt" | xtidy %]
 
+If you return the undefined value, JSON::Create prints a warning,
+halts further processing of the input, and returns the undefined
+value.
+
 The function is called "in scalar context", so
 
 [% INCLUDE "too-many-values.pl" | xtidy %]
@@ -447,6 +451,10 @@ handled by your handler. For example, you can replace all objects with
 produces
 
 [% INCLUDE "obj-handler-out.txt" | xtidy %]
+
+If you return the undefined value, JSON::Create prints a warning,
+halts further processing of the input, and returns the undefined
+value.
 
 You can also do something like what the L<JSON> module does with a
 "try harder" routine which scrabbles around looking for methods:
@@ -517,6 +525,10 @@ The type handler function you supply will be called with one value,
 the reference it is supposed to handle, and should return one value, a
 valid JSON string.  If you want to have your return value validated,
 use the L</validate> option (see below).
+
+If you return the undefined value, JSON::Create prints a warning,
+halts further processing of the input, and returns the undefined
+value.
 
 Type handler callbacks are handled in the same way that object
 callbacks are handled, so please see the discussion at L</obj> for how

@@ -22,6 +22,7 @@ MYMETA..*
 ^bench/bench\.output
 # Author build file
 ^make-pod\.pl$
+# Timekeeping file
 ^timesheet\.txt$
 # Benchmarks
 ^bench\..*$

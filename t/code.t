@@ -54,4 +54,6 @@ note ($warning);
     ok (ref $gotcode eq 'CODE', "Callback was called with code");
     ok (! $warning, "No warnings using code callback");
 };
+
+
 done_testing ();

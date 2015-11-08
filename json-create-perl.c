@@ -16,8 +16,9 @@
 
 typedef enum {
     json_create_ok,
-    /* Unknown Perl svtype within the structure. */
-    json_create_unknown_type,
+
+    /* Something went wrong in our code (we goofed) */
+
     /* An error from the unicode.c library. */
     json_create_unicode_error,
     /* A printed number turned out to be longer than MARGIN bytes. */
@@ -26,10 +27,17 @@ typedef enum {
     json_create_unknown_floating_point,
     /* Bad format for floating point. */
     json_create_bad_floating_format,
+
+    /* User-generated exceptions (bad input) */
+
     /* */
     json_create_unicode_bad_utf8,
+    /* Unknown Perl svtype within the structure. */
+    json_create_unknown_type,
     /* User's routine returned invalid stuff. */
     json_create_invalid_user_json,
+    /* User gave us an undefined value from a user subroutine. */
+    json_create_undefined_return_value,
 }
 json_create_status_t;
 
@@ -116,9 +124,10 @@ static int (* json_create_error_handler) (const char * file, int line_number, co
 	case json_create_unknown_type:				\
 	case json_create_unicode_bad_utf8:			\
 	case json_create_invalid_user_json:			\
+	case json_create_undefined_return_value:		\
 	    break;						\
 	    							\
-	    /* All other exceptions are bugs. */		\
+	    /* All other exceptions are our bugs. */		\
 	default:						\
 	    if (JCEH) {						\
 		(*JCEH) (__FILE__, __LINE__,			\
@@ -882,6 +891,13 @@ json_create_call_to_json (json_create_t * jc, SV * cv, SV * r)
     SvREFCNT_inc (json);
     FREETMPS;
     LEAVE;  
+    if (! SvOK (json)) {
+	/* User returned an undefined value. */
+	SvREFCNT_dec (json);
+	json_create_user_message (jc, json_create_undefined_return_value,
+				  "undefined value from user routine");
+	return json_create_undefined_return_value;
+    }
     jsonc = SvPV (json, jsonl);
     if (jc->validate) {
 	CALL (json_create_validate_user_json (jc, json));

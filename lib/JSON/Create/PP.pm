@@ -34,7 +34,8 @@ use Scalar::Util qw/looks_like_number blessed reftype/;
 
 # http://stackoverflow.com/questions/1185822/how-do-i-create-or-test-for-nan-or-infinity-in-perl#1185828
 
-sub isinf { $_[0]==9**9**9 || $_[0]==-9**9**9 }
+sub isinf { $_[0]==9**9**9 }
+sub isneginf { $_[0]==-9**9**9 }
 sub isnan { ! defined( $_[0] <=> 9**9**9 ) }
 
 sub escape_all_unicode
@@ -64,6 +65,30 @@ sub stringify
     return "\"$input\"";
 }
 
+sub validate_user_json
+{
+    my ($json) = @_;
+    eval {
+	JSON::Parse::assert_valid_json ($json);
+    };
+    if ($@) {
+	die "JSON::Parse::assert_valid_json failed for '$json': $@";
+    }
+}
+
+sub call_to_json
+{
+    my ($jc, $cv, $r) = @_;
+    my $json = &{$cv} ($r);
+    if (! defined $json) {
+	die 'undefined value from user routine';
+    }
+    if ($jc->{validate}) {
+	$jc->validate_user_json ($json);
+    }
+    return $json;
+}
+
 sub create_json_recursively
 {
     my ($obj, $input) = @_;
@@ -73,6 +98,7 @@ sub create_json_recursively
 	$ref = ref ($input);
     }
     else {
+	# Break encapsulation if the user has no handlers.
 	$ref = reftype ($input);
     }
     if ($ref) {
@@ -104,7 +130,7 @@ sub create_json_recursively
 	    if (blessed ($input)) {
 		my $handler = $obj->{_handlers}{$ref};
 		if ($handler) {
-		    $output .= &{$handler} ($input);
+		    $output .= $obj->call_to_json ($handler, $input);
 		}
 		else {
 		    die "$ref cannot be serialized.\n";
@@ -126,12 +152,10 @@ sub create_json_recursively
 		$output .= '"nan"';
 	    }
 	    elsif (isinf ($input)) {
-		if ($input < 0) {
-		    $output .= '"-inf"';
-		}
-		else {
-		    $output .= '"inf"';
-		}
+		$output .= '"inf"';
+	    }
+	    elsif (isneginf ($input)) {
+		$output .= '"-inf"';
 	    }
 	    else {
 		$output .= $input;
