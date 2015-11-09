@@ -670,6 +670,13 @@ to vary wildly from one test to another. The benchmarking script also
 contains commented out code to test against L<JSON::DWIW> if you are
 interested.
 
+Please note that the numbers for the floating point results are at the
+moment unfairly skewed in favour of JSON::Create, because whereas
+JSON::XS prints out the full available precision of the number (which
+is about equivalent to printing with a format C<%.15g>), JSON::Create
+prints only six digits of precision, creating a false impression of
+greater speed. Work on this is currently in progress.
+
 If you think these benchmarks are unfair, these are the best I've
 got. Please feel free to make better ones and add them.
 

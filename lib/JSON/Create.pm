@@ -7,14 +7,25 @@ require Exporter;
 );
 use warnings;
 use strict;
-our $VERSION = '0.13';
-
-eval {
-    require XSLoader;
-    XSLoader::load ('JSON::Create', $VERSION);
-#    die;
-};
-if ($@) {
+our $VERSION = '0.14';
+# Are we running as XS?
+our $noxs;
+$noxs = $ENV{JSONCreatePP};
+# Did the XS load OK?
+our $xsok;
+if (! $noxs) {
+    eval {
+	#    die;
+	require XSLoader;
+	XSLoader::load ('JSON::Create', $VERSION);
+	$xsok = 1;
+    };
+    if ($@) {
+	$xsok = 0;
+    }
+}
+if (! $xsok || $noxs) {
+#    print "Pure perl OK.\n";
     require JSON::Create::PP;
     JSON::Create::PP->import (':all');
 }
@@ -34,6 +45,7 @@ sub set_fformat
 	    $obj->set_fformat_unsafe (0);
 	}
 	else {
+	    print "$fformat\n";
 	    $obj->set_fformat_unsafe ($fformat);
 	}
     }
@@ -80,6 +92,17 @@ sub validate
 	JSON::Parse->import ('assert_valid_json');
     }
     $obj->set_validate ($value);
+}
+
+sub new
+{
+    my ($class) = @_;
+    if ($xsok) {
+	return bless jcnew (), $class;
+    }
+    else {
+	return JSON::Create::PP->new ();
+    }
 }
 
 1;

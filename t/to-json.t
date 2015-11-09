@@ -10,6 +10,13 @@ binmode $builder->todo_output,    ":utf8";
 binmode STDOUT, ":encoding(utf8)";
 binmode STDERR, ":encoding(utf8)";
 use JSON::Create;
+
+package JSON::Free;
+sub new {
+    return bless {};
+}
+1;
+
 package Zilog::Z80;
 sub new
 {
@@ -38,7 +45,7 @@ like ($outnoobj, qr/"zilog":\{\}/);
 # Now we're going to funky on down with some funky objects.
 
 $jc->obj (
-    'Zilog::Z80' => \sub {
+    'Zilog::Z80' => sub {
 	my ($obj) = @_;
 	#print "$obj\n";
 	if ($obj->{jive}) {
@@ -48,7 +55,7 @@ $jc->obj (
 	    return '"passive-aggressive-programmer"';
 	}
     },
-    'JSON::Create' => \sub {
+    'JSON::Free' => sub {
 	my ($self) = @_;
 	# The nature of monkey was ... irrepressible
 	return '"A knife cannot cut itself"',
@@ -67,8 +74,8 @@ like ($outobjvalue, qr/"zilog":"clive"/);
 note ($outobjvalue);
 
 # Same thing as above.
-
-my $selfjson = $jc->run ({self => $jc});
+my $jf = JSON::Free->new ();
+my $selfjson = $jc->run ({self => $jf});
 like ($selfjson, qr/"self":"A knife cannot cut itself"/);
 note ($selfjson);
 
@@ -89,7 +96,7 @@ note ($outbool);
 my $newjc = JSON::Create->new ();
 $newjc->bool ('Zilog::Z80::Buggles');
 $newjc->obj (
-    'Zilog::Z80' => \sub {
+    'Zilog::Z80' => sub {
 	my ($obj) = @_;
 	#	    print "$obj\n";
 	if ($obj->{jive}) {
@@ -106,11 +113,13 @@ like ($outbool2, qr/"yoshiyuki":true/, "boolean handler OK");
 like ($outbool2, qr/"masako":"clive"/, "object handler OK");
 
 $newjc->validate (1);
+$newjc->fatal_errors (1);
 eval {
     my $outbool3 = $newjc->run ($monkey);
 };
 ok (! $@, "no errors in user-generated JSON");
 note ($@);
+$newjc->fatal_errors (0);
 
 package Masako::Natsume;
 sub new { return bless {}; }
@@ -122,8 +131,9 @@ $newjc->obj ('Masako::Natsume' => \&Masako::Natsume::to_json);
 my $warning;
 $SIG{__WARN__} = sub {$warning = "@_";};
 my $mnj = $newjc->run ({tripitaka => $mn});
-ok (! defined $mnj);
-ok ($warning);
+ok (! defined $mnj, "Undefined return value with bad routine");
+note ($mnj);
+ok ($warning, "Got warning with invalid JSON");
 note ($warning);
 
 TODO: {

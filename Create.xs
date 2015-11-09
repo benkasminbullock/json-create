@@ -38,8 +38,7 @@ CODE:
 	PERLJCCALL (json_create_free (jc));
 
 JSON::Create
-new (class, ...)
-	char * class;
+jcnew ()
 CODE:
 	PERLJCCALL (json_create_new (& RETVAL));
 OUTPUT:

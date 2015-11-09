@@ -137,7 +137,7 @@ sub alnums
     my $stuff = parse_json ($output);
     my $num = 1;
     for my $letter ('a'..'z') {
-	ok ($stuff->{$letter} == $num);
+	ok ($stuff->{$letter} == $num, "$letter is $num");
 	$num *= 2;
     }
 }

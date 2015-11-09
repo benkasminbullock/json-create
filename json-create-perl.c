@@ -717,7 +717,8 @@ json_create_add_float (json_create_t * jc, SV * sv)
 	    fvlen = snprintf ((char *) jc->buffer + jc->length, MARGIN, jc->fformat, fv);
 	}
 	else {
-	    fvlen = snprintf ((char *) jc->buffer + jc->length, MARGIN, "%g", fv);
+	    fvlen = snprintf ((char *) jc->buffer + jc->length, MARGIN,
+			      "%g", fv);
 	}
 	if (fvlen >= MARGIN) {
 	    return json_create_number_too_long;
@@ -1108,14 +1109,18 @@ json_create_recursively (json_create_t * jc, SV * input)
 	    break;
 
 	case SVt_IV:
+//	    fprintf (stderr, "SVt_IV %ld\n", SvIV (r));
 	    CALL (json_create_add_integer (jc, r));
 	    break;
 
 	case SVt_NV:
+//	    fprintf (stderr, "%lu %d %lu %lu\n", SvIOK (r), SvIOK_UV (r), SvNOK (r), SvNIOK (r));
+//	    fprintf (stderr, "SVt_NV %g\n", SvNV (r));
 	    CALL (json_create_add_float (jc, r));
 	    break;
 
 	case SVt_PVNV:
+//	    fprintf (stderr, "SVt_PVNV %g\n", SvNV (r));
 	    /* We need to handle non-finite numbers without using
 	       Perl's stringified forms, because we need to put quotes
 	       around them, whereas Perl will just print 'nan' the

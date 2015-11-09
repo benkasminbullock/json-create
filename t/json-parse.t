@@ -13,8 +13,11 @@ binmode $builder->todo_output,    ":utf8";
 binmode STDOUT, ":encoding(utf8)";
 binmode STDERR, ":encoding(utf8)";
 use JSON::Create;
-# The freaky-deaky round trip stuff is new in JSON::Parse.
-use JSON::Parse '0.36_01', 'parse_json';
+use B;
+#if (!$JSON::Create::xsok) {
+#    plan skip_all => "Not running XS version, cannot do these tests";
+#}
+use JSON::Parse '0.38', 'parse_json';
 use Data::Dumper;
 my $jsonin = '{"hocus":true,"pocus":false,"focus":null}';
 my $p = parse_json ($jsonin);
