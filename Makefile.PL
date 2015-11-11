@@ -39,6 +39,8 @@ my %WriteMakefileArgs = (
     LICENSE => 'perl',
     PREREQ_PM => {
 	# Used in the PP version
+	'B' => 0,
+	# Used in the PP version
 	'Carp' => 0,
 	# Used in the PP version
 	'Scalar::Util' => 0,

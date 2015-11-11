@@ -1009,9 +1009,6 @@ json_create_handle_object (json_create_t * jc, SV * input)
 		else if (SvROK (*sv_ptr)) {
 		    SV * what;
 		    what = SvRV (*sv_ptr);
-		    if (SvROK (what)) {
-			what = SvRV(what);
-		    }
 		    switch (SvTYPE (what)) {
 		    case SVt_PVCV:
 			CALL (json_create_call_to_json (jc, what, r));
