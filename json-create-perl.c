@@ -388,7 +388,7 @@ json_create_add_key_len (json_create_t * jc, const unsigned char * key, STRLEN k
 
     CALL (add_char (jc, '"'));
     for (i = 0; i < keylen; ) {
-	unsigned char c, d, e;
+	unsigned char c, d, e, f;
 	c = key[i];
 
 	switch (jump[c]) {
@@ -504,14 +504,37 @@ json_create_add_key_len (json_create_t * jc, const unsigned char * key, STRLEN k
 	    break;
 
 	case UT4:
+           d = key[i + 1];
+           e = key[i + 2];
+           f = key[i + 3];
+           if (
+               // These byte values are copied from
+               // https://github.com/htacg/tidy-html5/blob/768ad46968b43e29167f4d1394a451b8c6f40b7d/src/utf8.c
+
+               // 0x40000 - 0xfffff
+               (c < 0xf4 &&
+                (d < 0x80 || d > 0xBF ||
+                 e < 0x80 || e > 0xBF ||
+                 f < 0x80 || f > 0xBF))
+               ||
+               // 0x100000 - 0x10ffff
+               (c == 0xf4 && 
+                (d < 0x80 || d > 0x8F ||
+                 e < 0x80 || e > 0xBF ||
+                 f < 0x80 || f > 0xBF))
+               ) {
+               BADUTF8;
+               i++;
+               break;
+           }
 	    if (jc->unicode_escape_all) {
 		unsigned int u;
 		const unsigned char * input;
 		input = key + i;
-		u = (input[0] & 0x07) << 18
-		  | (input[1] & 0x3F) << 12
-		  | (input[2] & 0x3F) <<  6
-		  | (input[3] & 0x3F);
+		u = (c & 0x07) << 18
+		  | (d & 0x3F) << 12
+                  | (e & 0x3F) <<  6
+                  | (f & 0x3F);
 		add_u (jc, u);
 	    }
 	    else {
