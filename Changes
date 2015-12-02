@@ -1,3 +1,5 @@
+0.15 2015-12-02
+
 0.14 2015-11-08
 * Returning the undefined value causes a halt of execution
 * Validates four byte UTF-8 correctly

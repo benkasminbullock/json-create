@@ -15,7 +15,7 @@ binmode STDOUT, ":encoding(utf8)";
 binmode STDERR, ":encoding(utf8)";
 my ($fh, $filename) = tempfile ();
 close $fh or die $!;
-system ("git diff > $filename");
+system ("chdir $Bin;git diff > $filename");
 ok (! -s $filename, "no uncommitted changes");
 if (-f $filename) {
     unlink $filename or die $!;
