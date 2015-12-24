@@ -26,3 +26,5 @@ MYMETA..*
 ^timesheet\.txt$
 # Benchmarks
 ^bench\..*$
+# Author tests can be downloaded from github.
+^xt/*\.t$
