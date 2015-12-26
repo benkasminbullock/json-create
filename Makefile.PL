@@ -28,7 +28,7 @@ my $tr = {
     # This only affects the file t/json-parse.t, the other tests are
     # unaffected.
 
-    'JSON::Parse' => '0.37',
+    'JSON::Parse' => '0.38',
 };
 
 my %WriteMakefileArgs = (
@@ -47,7 +47,6 @@ my %WriteMakefileArgs = (
 	# Used in the PP version
 	'POSIX' => 0,
     },
-#    CC => 'gcc48',
     TEST_REQUIRES => $tr,
     META_MERGE => {
 	'meta-spec' => {

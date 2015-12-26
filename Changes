@@ -1,5 +1,9 @@
+0.16 2015-12-26
+* Change required version of JSON::Parse to 0.38.
+
 0.15 2015-12-24
 * Test repo is updated correctly.
+* Added response to dishonest review of module.
 
 0.14 2015-11-08
 * Returning the undefined value causes a halt of execution
