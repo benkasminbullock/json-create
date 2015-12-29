@@ -47,7 +47,7 @@ my $nan = -sin(9**9**9);
 
 SKIP: {
     if (! $nan || ! $inf || ! $neginf) {
-	skip 'Could not get nan or inf or neginf', 3;
+	skip 'Could not get nan or inf or neginf', 9;
     }
 
     my $bread = {
@@ -68,6 +68,15 @@ SKIP: {
 	my $nanbread = create_json ($thing);
 #	note ($nanbread);
 	ok (valid_json ($nanbread), "non-finite is ok");
+    }
+    my $jcnfh = JSON::Create->new ();
+    $jcnfh->non_finite_handler(sub {
+	return 'null';
+    });
+    for my $thing ($bread, $rice, $lice) {
+	my $jcout = $jcnfh->run ($thing);
+	ok (valid_json ($jcout), "output using non-finite handler OK");
+	like ($jcout, qr/{"(?:curry|rice|lice)":null\}/, "get null in output");
     }
 };
 

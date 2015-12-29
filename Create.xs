@@ -161,3 +161,16 @@ CODE:
 	    jc->n_mallocs++;
 	}
 
+void
+non_finite_handler (jc, oh = & PL_sv_undef)
+	JSON::Create jc;
+	SV * oh;
+CODE:
+	/* Remove a previous ref handler, if it exists. */
+	PERLJCCALL (json_create_remove_non_finite_handler (jc));
+	if (SvTRUE (oh)) {
+	    jc->non_finite_handler = oh;
+	    SvREFCNT_inc (oh);
+	    jc->n_mallocs++;
+	}
+

@@ -1,3 +1,7 @@
+0.17 2015-12-29
+* Add handlers for NaN and infinity.
+* Documented how to remove values set by obj_handler or type_handler.
+
 0.16 2015-12-26
 * Change required version of JSON::Parse to 0.38.
 

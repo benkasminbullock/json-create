@@ -177,8 +177,9 @@ C<"%g">, like
 
 NaN (not a number) values are converted to C<"nan"> (the letters
 C<nan> surrounded by double quotes). Positive and negative infinity
-are converted to C<"inf"> and C<"-inf"> respectively. JSON does not
-allow NaN or infinity as bare values. From page 6 of L</RFC 7159>:
+are converted to C<"inf"> and C<"-inf"> respectively. [%
+see('non_finite_handler') %]. JSON does not allow NaN or infinity as bare
+values. From page 6 of L</RFC 7159>:
 
 =over
 
@@ -370,6 +371,18 @@ produces
 
 See also L</U+2028 and U+2029 (JavaScript clashes)>.
 
+=head3 non_finite_handler
+
+   $jc->non_finite_handler (\& handler);
+
+[% INCLUDE "non-finite-handler.pl" | xtidy %]
+
+produces
+
+[% INCLUDE "non-finite-handler-out.txt" | xtidy %]
+
+[% since(0.17) %]
+
 =head3 obj
 
     $jc->obj ('Zilog::Z80' => sub { my ($obj) = @_; print "\"Z80\""; });
@@ -456,6 +469,13 @@ If you return the undefined value, JSON::Create prints a warning,
 halts further processing of the input, and returns the undefined
 value.
 
+To remove the object handler, simply call the function without an
+argument, or with a false argument:
+
+    $jc->obj_handler ();
+
+The behaviour then reverts to the default.
+
 You can also do something like what the L<JSON> module does with a
 "try harder" routine which scrabbles around looking for methods:
 
@@ -534,6 +554,17 @@ Type handler callbacks are handled in the same way that object
 callbacks are handled, so please see the discussion at L</obj> for how
 to handle errors and how to deal with routines requiring multiple
 values.
+
+To remove the type handler, simply call the function without an
+argument,
+
+    $jc->type_handler ();
+
+or with a false argument:
+
+    $jc->type_handler (0);
+
+The behaviour then reverts to the default.
 
 [% since('0.10') %]
 
@@ -642,13 +673,11 @@ was found in the user's input. See L</type_handler>.
 
 There is currently no facility to add whitespace to the output JSON.
 
-There is currently no way to delete object handlers from a
-JSON::Create object.
+There is currently no way to delete object handlers set via L</obj>
+from a JSON::Create object.
 
 There are a few remaining undecided issues around the default object
 serialization.
-
-There is no way to customize output of NaN and infinity.
 
 No warning is printed when the user uses clashing methods like
 L</bool> and L</obj_handler>.
@@ -706,6 +735,8 @@ about backwards compatibility.
 L</obj_handler> was added in version 0.13 of the module. This version
 also added loading of the Pure-Perl version of the module,
 JSON::Create::PP, if the loading of JSON::Create failed.
+
+L</non_finite_handler> was added in version 0.17 of the module.
 
 [% INCLUDE "author" %]
 [% INCLUDE "terminology" %]

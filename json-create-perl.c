@@ -17,7 +17,8 @@
 typedef enum {
     json_create_ok,
 
-    /* Something went wrong in our code (we goofed) */
+    /* The following set of exceptions indicate something went wrong
+       in JSON::Create's code, in other words bugs. */
 
     /* An error from the unicode.c library. */
     json_create_unicode_error,
@@ -28,9 +29,10 @@ typedef enum {
     /* Bad format for floating point. */
     json_create_bad_floating_format,
 
-    /* User-generated exceptions (bad input) */
+    /* The following set of exceptions indicate bad input, in other
+       words these are user-generated exceptions. */
 
-    /* */
+    /* Badly-formatted UTF-8. */
     json_create_unicode_bad_utf8,
     /* Unknown Perl svtype within the structure. */
     json_create_unknown_type,
@@ -66,6 +68,8 @@ typedef struct json_create {
     SV * type_handler;
     /* User obj handler. */
     SV * obj_handler;
+    /* User non-finite-float handler. */
+    SV * non_finite_handler;
     /* Do any of the SVs have a Unicode flag? */
     unsigned int unicode : 1;
     /* Should we convert / into \/? */
@@ -89,7 +93,7 @@ json_create_t;
    MARGIN bytes left to write into, then we put "jc->buffer" into the
    Perl scalar "jc->output" via "json_create_buffer_fill". We always
    want to be at least MARGIN bytes from the end of "jc->buffer" after
-   every write operation so that we always have room to put a number
+   every write operation, so that we always have room to put a number
    or a UTF-8 "rune" in the buffer without checking the length
    excessively. */
 
@@ -729,6 +733,79 @@ json_create_add_integer (json_create_t * jc, SV * sv)
     return json_create_ok;
 }
 
+#define UNKNOWN_TYPE_FAIL(t)				\
+    if (JCEH) {						\
+	(*JCEH) (__FILE__, __LINE__,			\
+		 "Unknown Perl type %d", t);		\
+    }							\
+    return json_create_unknown_type
+
+//#define DEBUGOBJ
+
+static json_create_status_t
+json_create_validate_user_json (json_create_t * jc, SV * json)
+{
+    SV * error;
+    dSP;
+    ENTER;
+    SAVETMPS;
+    PUSHMARK (SP);
+    XPUSHs (sv_2mortal (newSVsv (json)));
+    PUTBACK;
+    call_pv ("JSON::Parse::assert_valid_json",
+	     G_EVAL|G_DISCARD);
+    FREETMPS;
+    LEAVE;  
+    error = get_sv ("@", 0);
+    if (! error) {
+	return json_create_ok;
+    }
+    if (SvOK (error) && SvCUR (error) > 0) {
+	json_create_user_message (jc, json_create_invalid_user_json,
+				  "JSON::Parse::assert_valid_json failed for '%s': %s",
+				  SvPV_nolen (json), SvPV_nolen (error));
+	return json_create_invalid_user_json;
+    }
+    return json_create_ok;
+}
+
+static json_create_status_t
+json_create_call_to_json (json_create_t * jc, SV * cv, SV * r)
+{
+    SV * json;
+    char * jsonc;
+    STRLEN jsonl;
+    // https://metacpan.org/source/AMBS/Math-GSL-0.35/swig/gsl_typemaps.i#L438
+    dSP;
+    
+    ENTER;
+    SAVETMPS;
+    
+    PUSHMARK (SP);
+    //https://metacpan.org/source/AMBS/Math-GSL-0.35/swig/gsl_typemaps.i#L482
+    XPUSHs (sv_2mortal(newRV(r)));
+    PUTBACK;
+    call_sv (cv, 0);
+    json = POPs;
+    SvREFCNT_inc (json);
+    FREETMPS;
+    LEAVE;  
+    if (! SvOK (json)) {
+	/* User returned an undefined value. */
+	SvREFCNT_dec (json);
+	json_create_user_message (jc, json_create_undefined_return_value,
+				  "undefined value from user routine");
+	return json_create_undefined_return_value;
+    }
+    jsonc = SvPV (json, jsonl);
+    if (jc->validate) {
+	CALL (json_create_validate_user_json (jc, json));
+    }
+    CALL (add_str_len (jc, jsonc, jsonl));
+    SvREFCNT_dec (json);
+    return json_create_ok;
+}
+
 static INLINE json_create_status_t
 json_create_add_float (json_create_t * jc, SV * sv)
 {
@@ -750,19 +827,24 @@ json_create_add_float (json_create_t * jc, SV * sv)
 	CHECKLENGTH;
     }
     else {
-	if (isnan (fv)) {
-	    ADD ("\"nan\"");
-	}
-	else if (isinf (fv)) {
-	    if (fv < 0.0) {
-		ADD ("\"-inf\"");
-	    }
-	    else {
-		ADD ("\"inf\"");
-	    }
+	if (jc->non_finite_handler) {
+	    CALL (json_create_call_to_json (jc, jc->non_finite_handler, sv));
 	}
 	else {
-	    return json_create_unknown_floating_point;
+	    if (isnan (fv)) {
+		ADD ("\"nan\"");
+	    }
+	    else if (isinf (fv)) {
+		if (fv < 0.0) {
+		    ADD ("\"-inf\"");
+		}
+		else {
+		    ADD ("\"inf\"");
+		}
+	    }
+	    else {
+		return json_create_unknown_floating_point;
+	    }
 	}
     }
     return json_create_ok;
@@ -857,79 +939,6 @@ json_create_add_array (json_create_t * jc, AV * av)
     return json_create_ok;
 }
 
-#define UNKNOWN_TYPE_FAIL(t)				\
-    if (JCEH) {						\
-	(*JCEH) (__FILE__, __LINE__,			\
-		 "Unknown Perl type %d", t);		\
-    }							\
-    return json_create_unknown_type
-
-//#define DEBUGOBJ
-
-static json_create_status_t
-json_create_validate_user_json (json_create_t * jc, SV * json)
-{
-    SV * error;
-    dSP;
-    ENTER;
-    SAVETMPS;
-    PUSHMARK (SP);
-    XPUSHs (sv_2mortal (newSVsv (json)));
-    PUTBACK;
-    call_pv ("JSON::Parse::assert_valid_json",
-	     G_EVAL|G_DISCARD);
-    FREETMPS;
-    LEAVE;  
-    error = get_sv ("@", 0);
-    if (! error) {
-	return json_create_ok;
-    }
-    if (SvOK (error) && SvCUR (error) > 0) {
-	json_create_user_message (jc, json_create_invalid_user_json,
-				  "JSON::Parse::assert_valid_json failed for '%s': %s",
-				  SvPV_nolen (json), SvPV_nolen (error));
-	return json_create_invalid_user_json;
-    }
-    return json_create_ok;
-}
-
-
-static json_create_status_t
-json_create_call_to_json (json_create_t * jc, SV * cv, SV * r)
-{
-    SV * json;
-    char * jsonc;
-    STRLEN jsonl;
-    // https://metacpan.org/source/AMBS/Math-GSL-0.35/swig/gsl_typemaps.i#L438
-    dSP;
-    
-    ENTER;
-    SAVETMPS;
-    
-    PUSHMARK (SP);
-    //https://metacpan.org/source/AMBS/Math-GSL-0.35/swig/gsl_typemaps.i#L482
-    XPUSHs (sv_2mortal(newRV(r)));
-    PUTBACK;
-    call_sv (cv, 0);
-    json = POPs;
-    SvREFCNT_inc (json);
-    FREETMPS;
-    LEAVE;  
-    if (! SvOK (json)) {
-	/* User returned an undefined value. */
-	SvREFCNT_dec (json);
-	json_create_user_message (jc, json_create_undefined_return_value,
-				  "undefined value from user routine");
-	return json_create_undefined_return_value;
-    }
-    jsonc = SvPV (json, jsonl);
-    if (jc->validate) {
-	CALL (json_create_validate_user_json (jc, json));
-    }
-    CALL (add_str_len (jc, jsonc, jsonl));
-    SvREFCNT_dec (json);
-    return json_create_ok;
-}
 
 static INLINE json_create_status_t
 json_create_handle_unknown_type (json_create_t * jc, SV * r)
@@ -1334,12 +1343,24 @@ json_create_remove_obj_handler (json_create_t * jc)
 }
 
 static json_create_status_t
+json_create_remove_non_finite_handler (json_create_t * jc)
+{
+    if (jc->non_finite_handler) {
+	SvREFCNT_dec (jc->non_finite_handler);
+	jc->non_finite_handler = 0;
+	jc->n_mallocs--;
+    }
+    return json_create_ok;
+}
+
+static json_create_status_t
 json_create_free (json_create_t * jc)
 {
     CALL (json_create_free_fformat (jc));
     CALL (json_create_remove_handlers (jc));
     CALL (json_create_remove_type_handler (jc));
     CALL (json_create_remove_obj_handler (jc));
+    CALL (json_create_remove_non_finite_handler (jc));
 
     /* Finished, check we have no leaks before freeing. */
 
