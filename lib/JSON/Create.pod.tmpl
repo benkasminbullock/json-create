@@ -3,7 +3,59 @@
 This behaviour can be altered with the method L</[% method %]>
 [%- END %]
 [% MACRO since(version) BLOCK -%]
-This was added in version [% version %] of the module.
+This method was added in version [% version %] of the module.
+[%- END %]
+[% MACRO handler_undef BLOCK -%]
+
+If your handler returns the undefined value, L</run> prints a warning,
+halts further processing of the input, and returns the undefined
+value.
+
+[%- END %]
+[% MACRO handler_common(handler) BLOCK -%]
+=over
+
+=item * Calling convention
+
+The [% handler %] routine is passed a single argument and is expected
+to return a single argument, which is the JSON you wish to output. It
+is called in scalar context. In other words, the call looks like the
+following:
+
+     $json = &{$jc->{[% handler %]}} ($item);
+
+To pass or return multiple values via the C<[% handler %]> callback,
+use a closure. See the discussion at L</obj> for an example.
+
+=item * Returning undef halts processing
+
+[% handler_undef %]
+
+=item * Delete the handler with any false value
+
+To remove the handler, simply call the function without an argument,
+
+    $jc->[% handler %] ();
+
+or with a false argument:
+
+    $jc->[% handler %] (0);
+
+The behaviour then reverts to the default.
+
+=item * Checking the output JSON
+
+The JSON output by your handler may be checked for validity by
+switching on validation using L</validate>.
+
+=item * Exception handling
+
+Exceptions (C<die>) thrown within C<[% handler %]> callbacks are not
+caught by L</run> but passed through to the parent. Please see the
+discussion at L</obj> for an example.
+
+=back
+
 [%- END %]
 =encoding UTF-8
 
@@ -22,13 +74,13 @@ produces
 =head1 DESCRIPTION
 
 This module produces JSON out of Perl. It offers a function
-L</create_json> which converts Perl into JSON using common defaults,
-and a customizable object created with L</new> where the user can
-specify a variety of behaviours. For example, Unicode escaping into
-ASCII via L</unicode_escape_all>, floating point number formatting via
-L</set_fformat>, escaping of slashes (/) with L</escape_slash>, JSON
-serialization of objects with L</obj>, or boolean handling with
-L</bool>.
+L</create_json> which converts a Perl variable into JSON using common
+defaults, and a customizable object created with L</new> where the
+user can specify a variety of behaviours. For example, Unicode
+escaping into ASCII via L</unicode_escape_all>, floating point number
+formatting via L</set_fformat>, escaping of slashes (/) with
+L</escape_slash>, JSON serialization of objects with L</obj>, or
+boolean handling with L</bool>.
 
 In all cases, errors in processing result in a warning and an
 undefined return value. [% see('fatal_errors') %].
@@ -117,6 +169,8 @@ undefined value is returned. [% see('replace_bad_utf8') %]. Some
 whitespace and control characters must be escaped for the output to be
 valid JSON. (See L</RFC 7159>.)
 
+For full details of Unicode handling, refer to L</UNICODE HANDLING>.
+
 =head4 Control characters and whitespace
 
 To form valid JSON, bytes of value less than 0x20 in a Perl string
@@ -195,8 +249,17 @@ Undefined values are mapped to the JSON literal "null".
 =head3 Booleans
 
 Booleans (C<true> and C<false>) from input via JSON::Parse version
-0.37 or later will be turned into C<true> and C<false>. Perl objects
-can be converted to booleans using the method L</bool> (see below).
+0.37 or later will be turned into the outputs C<true> and
+C<false>:
+
+[% INCLUDE "json-parse-bool.pl" | xtidy %]
+
+outputs
+
+[% INCLUDE "json-parse-bool-out.txt" | xtidy %]
+
+Other kinds of objects can be converted to booleans using the method
+L</bool> (see below).
 
 =head2 Other types
 
@@ -255,7 +318,8 @@ produces
 =head2 Methods for formatting the output
 
 These methods work on the object created with L</new> to format the
-output JSON in a different way from the default.
+output JSON in a different way from the default when operating
+L</run>. These methods are not applicable to L</create_json>.
 
 =head3 bool
 
@@ -338,6 +402,22 @@ yourself, the tests will just be skipped.
 
 More modules will be added to this list as time permits.
 
+=head3 downgrade_utf8
+
+    $jc->downgrade_utf8 (1);
+
+If this is set to a true value, output is never upgraded to character
+strings, or C<utf8>. This overrides the default behaviour, which is to
+upgrade the output to C<utf8> if any part of the input is C<utf8>, or
+if the user has requested replacement with L</replace_bad_utf8> and
+there are bad characters in the user's input. See L</UNICODE HANDLING>
+for details. Please note that all output of JSON::Create is valid
+UTF-8, regardless of what this flag is set to.
+
+This method should be considered experimental.
+
+[% since('0.18') %]
+
 =head3 escape_slash
 
     $jc->escape_slash (1);
@@ -375,11 +455,23 @@ See also L</U+2028 and U+2029 (JavaScript clashes)>.
 
    $jc->non_finite_handler (\& handler);
 
+This overrides the default behaviour for handling non-finite floating
+point numbers, in other words NaN (not a number) and negative or
+positive infinity, with a user-defined routine. The default behaviour
+of this module is described at L</Floating point numbers>. 
+
+The routine C<handler> is supplied with the non-finite number as its
+sole argument, and returns one argument, the output JSON. For example,
+to use always use C<null> in place of the default, supply a function
+like the following:
+
 [% INCLUDE "non-finite-handler.pl" | xtidy %]
 
-produces
+which produces
 
 [% INCLUDE "non-finite-handler-out.txt" | xtidy %]
+
+[% handler_common('non_finite_handler') %]
 
 [% since(0.17) %]
 
@@ -417,10 +509,6 @@ produces
 
 [% INCLUDE "zilog-out.txt" | xtidy %]
 
-If you return the undefined value, JSON::Create prints a warning,
-halts further processing of the input, and returns the undefined
-value.
-
 The function is called "in scalar context", so
 
 [% INCLUDE "too-many-values.pl" | xtidy %]
@@ -451,6 +539,8 @@ produces
 If you prefer to take over all object handling yourself, there is also
 L</obj_handler>.
 
+[% handler_undef %]
+
 =head3 obj_handler
 
     $jc->obj_handler (\& my_obj_handler);
@@ -459,25 +549,19 @@ Supply an object handler. If you supply this, all objects will be
 handled by your handler. For example, you can replace all objects with
 'null' or die if an object is found.
 
+[% handler_common('obj_handler') %]
+
+Here is an example of handling various types of object with your own
+handler:
+
 [% INCLUDE "obj-handler.pl" | xtidy %]
 
-produces
+This produces
 
 [% INCLUDE "obj-handler-out.txt" | xtidy %]
 
-If you return the undefined value, JSON::Create prints a warning,
-halts further processing of the input, and returns the undefined
-value.
-
-To remove the object handler, simply call the function without an
-argument, or with a false argument:
-
-    $jc->obj_handler ();
-
-The behaviour then reverts to the default.
-
-You can also do something like what the L<JSON> module does with a
-"try harder" routine which scrabbles around looking for methods:
+Here is an example of a "try harder" routine which does something like
+the L<JSON> module does, by looking for methods on all objects:
 
 [% INCLUDE "try-harder.pl" | xtidy %]
 
@@ -486,10 +570,10 @@ This outputs
 [% INCLUDE "try-harder-out.txt" | xtidy %]
 
 This C<obj_handler> overrides whatever you have set with L</bool> or
-L</obj>. The routine you use to handle objects may be the same as the
-routine you use to handle types. See L</type_handler>. Validation of
-the return JSON can be carried out using L</validate> if you wish. For
-more details about the callbacks, see L</obj>.
+L</obj>. Currently, it does not print a warning about this. See
+L</BUGS>. The routine you use to handle objects may be the same as the
+routine you use to handle types. See L</type_handler>. For more
+details about the callbacks, see L</obj>.
 
 [% since('0.13') %]
 
@@ -499,7 +583,13 @@ more details about the callbacks, see L</obj>.
 
 Replace invalid UTF-8 in the inputs with the Unicode replacement
 character U+FFFD, rather than produce the warning or error L</Invalid
-UTF-8>.
+UTF-8>. 
+
+If C<replace_bad_utf8> is used on input containing only strings not
+marked as character strings, and bad UTF-8 is found, JSON::Create
+marks the output as a character string. This is counterintuitive but
+unfortunately necessary, because otherwise the replacement character
+itself is just a series of broken bytes. [% see('downgrade_utf8') %].
 
 [% since(0.12) %]
 
@@ -524,20 +614,22 @@ outputs
 
     $jc->type_handler (sub {return 'null'});
 
-By default, when JSON::Create encounters a type such as a glob or code
-reference which it doesn't know what to do with, it prints a warning
-and returns an undefined value. See L</Code, regexes, and other
-references>.  The method C<type_handler> sets up a callback which is
-called when an unhandled type is found in the input. For example, if
-you want to put the JSON literal C<null> in the output when you find
-an unhandled type rather than print an error, the above example will
-do it.
+By default, when JSON::Create encounters a variable of a type which it
+doesn't know what to do with, such as a glob or code reference, it
+prints a warning and returns an undefined value. See L</Code, regexes,
+and other references>.  The method C<type_handler> sets up a callback
+which is called when a variable of an unhandled type is found in the
+input. For example, if you want to put the JSON literal C<null> in the
+output when you find an unhandled type rather than print an error, the
+above example will do it.
 
-Here is an example showing a few possibilities:
+[% handler_common('type_handler') %]
+
+The following example showing a few possibilities for handling types:
 
 [% INCLUDE "type-handler.pl" | xtidy %]
 
-outputs
+This outputs
 
 [% INCLUDE "type-handler-out.txt" | xtidy %]
 
@@ -545,26 +637,6 @@ The type handler function you supply will be called with one value,
 the reference it is supposed to handle, and should return one value, a
 valid JSON string.  If you want to have your return value validated,
 use the L</validate> option (see below).
-
-If you return the undefined value, JSON::Create prints a warning,
-halts further processing of the input, and returns the undefined
-value.
-
-Type handler callbacks are handled in the same way that object
-callbacks are handled, so please see the discussion at L</obj> for how
-to handle errors and how to deal with routines requiring multiple
-values.
-
-To remove the type handler, simply call the function without an
-argument,
-
-    $jc->type_handler ();
-
-or with a false argument:
-
-    $jc->type_handler (0);
-
-The behaviour then reverts to the default.
 
 [% since('0.10') %]
 
@@ -575,6 +647,8 @@ The behaviour then reverts to the default.
 Call this with a true value to make all Unicode characters be escaped
 into the C<\u3000> format. A false value switches that off again.
 
+For example,
+
 [% INCLUDE "escape-all.pl" | xtidy %]
 
 outputs
@@ -583,14 +657,21 @@ outputs
 
 Note that JSON::Create contains its own UTF-8 validation, and this
 escaping is applied regardless of whether Perl marks the bytes as
-"utf8" or not.
+"utf8" or not:
+
+[% INCLUDE "escape-all-no-utf8.pl" | xtidy %]
+
+outputs
+
+[% INCLUDE "escape-all-no-utf8-out.txt" | xtidy %]
 
 =head3 unicode_upper
 
     $jc->unicode_upper (1);
 
 Call this with a true value to make Unicode escapes use upper case
-hexadecimal. See the example under L</unicode_escape_all>.
+letters in the hexadecimal. See the example under
+L</unicode_escape_all>.
 
 =head3 validate
 
@@ -618,6 +699,155 @@ L</create_json>, is exported on request.
 The module uses C internally, so you need a C compiler to install
 it. If the compiled library cannot be loaded, there is also a backup
 "pure Perl" module JSON::Create::PP in the distribution.
+
+=head1 UNICODE HANDLING
+
+This section details JSON::Create's handling of Unicode within
+strings. This involves the distinction between two things with
+confusingly similar names, Perl character strings, C<utf8>, and the
+Unicode encoding C<UTF-8>.
+
+=over
+
+=item UTF-8 only
+
+JSON::Create only consumes and produces the UTF-8 encoding of
+Unicode. If you need a different encoding, please use the L<Encode>
+module to encode the output.
+
+=item Input strings must be UTF-8
+
+All strings within the input must be UTF-8 encoded. This does not mean
+that the strings must be Perl character strings (Perl's C<utf8>), it
+means that input strings must be valid UTF-8. Input strings can be
+either Perl character strings or bytes, but if they are bytes, the
+bytes must be valid UTF-8.
+
+To illustrate this, examine the following example:
+
+[% INCLUDE "valid-chars.pl" | xtidy %]
+
+This produces the following output:
+
+[% INCLUDE "valid-chars-out.txt" | xtidy %]
+
+The point here is that the UTF-8 validation is carried out regardless
+of whether Perl thinks that the input string is "utf8". The string in
+the third call to L</create_json> is not marked as utf8 by Perl but
+still fails as invalid UTF-8.
+
+This restriction is imposed by the JSON standard, which says that
+strings must be in Unicode:
+
+=over
+
+A string is a sequence of zero or more Unicode characters [UNICODE].
+
+=back
+
+See L</RFC 7159>, section "1 Introduction", on page 2.
+
+=item All of JSON::Create's output is valid UTF-8
+
+All of the output of either the function L</create_json> or the method
+L</run> is valid UTF-8. This does not mean that output strings are
+marked as Perl character strings (C<utf8>), it means that the output
+has been validated as UTF-8.
+
+=item A single utf8 in the input makes the entire output utf8
+
+If a single string anywhere in the input is a Perl character string,
+in other words marked as C<utf8>, the entire output string is marked
+as a Perl character string, C<utf8>. Since the output is always valid
+UTF-8, this should not cause a problem in practice. [%
+see('downgrade_utf8') %].
+
+=item Using replace_bad_utf8 may cause a utf8 upgrade
+
+Please see the discussion under L</replace_bad_utf8>.
+
+=back
+
+=head1 DIAGNOSTICS
+
+All diagnostics are warnings by default. [% see('fatal_errors') %].
+
+=over
+
+=item Invalid UTF-8
+
+(Warning) Bytes in a Perl string were not valid UTF-8. [% see('replace_bad_utf8') %].
+
+=item JSON::Parse::assert_valid_json failed
+
+(Warning) The user requested validation with L</validate> and this failed.
+
+=item Input's type cannot be serialized to JSON
+
+(Warning) A reference type such as a code reference, regexp, or glob
+was found in the user's input. See L</type_handler>.
+
+=back
+
+=head1 PERFORMANCE
+
+This module is fairly new on the scene, so speed is not a key issue
+until the module is demonstrably producing correct outputs.
+
+However, due to user interest, there is a benchmarking script in
+F<bench/bench.pl> which compares the performance of the module with
+L<JSON::XS> and L<Cpanel::JSON::XS>. Outputs look like this:
+
+[% INCLUDE "/home/ben/projects/json-create/bench/bench.output" | indent (4) %]
+
+This only compares a few simple cases in which the output is
+demonstrably correct. Also, at least on my computer, the numbers seem
+to vary wildly from one test to another. The benchmarking script also
+contains commented out code to test against L<JSON::DWIW> if you are
+interested.
+
+Please note that the numbers for the floating point results are at the
+moment unfairly skewed in favour of JSON::Create, because whereas
+JSON::XS prints out the full available precision of the number (which
+is about equivalent to printing with a format C<%.15g>), JSON::Create
+prints only six digits of precision, creating a false impression of
+greater speed. Work on this is currently in progress.
+
+=head1 BUGS
+
+There is currently no facility to add whitespace to the output JSON.
+
+There is currently no way to delete object handlers set via L</obj>
+from a JSON::Create object.
+
+There are a few remaining undecided issues around the default object
+serialization.
+
+No warning is printed when the user uses clashing methods like
+L</bool> and L</obj_handler>.
+
+Features added since version 0.16 of the module are not yet
+implemented in JSON::Create::PP.
+
+There is a bug in JSON::Create::PP's handling of non-integer numbers.
+
+The floating point printing loses precision on round trips.
+
+=head1 HISTORY
+
+L</set_fformat> was added in version 0.07.
+
+L</validate> was added in version 0.07.
+
+L</replace_bad_utf8> was added in version 0.12.
+
+L</obj_handler> was added in version 0.13. This version also added
+loading of the Pure-Perl version of the module, JSON::Create::PP, if
+the loading of JSON::Create failed.
+
+L</non_finite_handler> was added in version 0.17.
+
+L</downgrade_utf8> was added in version 0.18.
 
 =head1 SEE ALSO
 
@@ -648,98 +878,7 @@ This is a backup module for JSON::Create in pure Perl.
 
 =back
 
-=head1 DIAGNOSTICS
-
-All diagnostics are warnings by default. [% see('fatal_errors') %].
-
-=over
-
-=item Invalid UTF-8
-
-(Warning) Bytes in a Perl string were not valid UTF-8. [% see('replace_bad_utf8') %].
-
-=item JSON::Parse::assert_valid_json failed
-
-(Warning) The user requested validation with L</validate> and this failed.
-
-=item Input's type cannot be serialized to JSON
-
-(Warning) A reference type such as a code reference, regexp, or glob
-was found in the user's input. See L</type_handler>.
-
-=back
-
-=head1 BUGS
-
-There is currently no facility to add whitespace to the output JSON.
-
-There is currently no way to delete object handlers set via L</obj>
-from a JSON::Create object.
-
-There are a few remaining undecided issues around the default object
-serialization.
-
-No warning is printed when the user uses clashing methods like
-L</bool> and L</obj_handler>.
-
-=head1 PERFORMANCE
-
-This module is fairly new on the scene, so speed is not a key issue
-until the module is demonstrably producing correct outputs.
-
-However, due to user interest, there is a benchmarking script in
-F<bench/bench.pl> which compares the performance of the module with
-L<JSON::XS> and L<Cpanel::JSON::XS>. Outputs look like this:
-
-[% INCLUDE "/home/ben/projects/json-create/bench/bench.output" | indent (4) %]
-
-This only compares a few simple cases in which the output is
-demonstrably correct. Also, at least on my computer, the numbers seem
-to vary wildly from one test to another. The benchmarking script also
-contains commented out code to test against L<JSON::DWIW> if you are
-interested.
-
-Please note that the numbers for the floating point results are at the
-moment unfairly skewed in favour of JSON::Create, because whereas
-JSON::XS prints out the full available precision of the number (which
-is about equivalent to printing with a format C<%.15g>), JSON::Create
-prints only six digits of precision, creating a false impression of
-greater speed. Work on this is currently in progress.
-
-If you think these benchmarks are unfair, these are the best I've
-got. Please feel free to make better ones and add them.
-
-=head1 HISTORY
-
-This module, and L</JSON::Parse>, and incidentally some other modules
-I've publicly released, such as L<Gzip::Faster>, arose partly out of
-dissatisfaction with the design of the existing CPAN modules. My
-feeling is that modules should prominently offer a simple interface to
-catch the most common cases, and then complexity should be added only
-when it's actually needed. In the case of JSON::Create,
-L</create_json> offers a simple "don't make me think" interface which
-covers the most common case, and uses what are hopefully sensible
-defaults, and L</new> and the methods like L</unicode_escape_all>
-offer wider choices to the user who actually needs them.
-
-As far as my own use is concerned, the module is currently in use
-everywhere that I need to generate JSON within Perl. With this and
-JSON::Parse, I do not use JSON, JSON::XS or any of the other JSON
-modules on CPAN any more. However, I would suggest caution in
-switching to this module from the more established JSON solutions on
-CPAN, since this module is relatively new, and while most parts are
-implemented, there are some corner-cases and untested code. I'm also
-changing the design somewhat as I go along without worrying too much
-about backwards compatibility.
-
-L</obj_handler> was added in version 0.13 of the module. This version
-also added loading of the Pure-Perl version of the module,
-JSON::Create::PP, if the loading of JSON::Create failed.
-
-L</non_finite_handler> was added in version 0.17 of the module.
-
 [% INCLUDE "author" %]
-[% INCLUDE "terminology" %]
 
 =cut
 

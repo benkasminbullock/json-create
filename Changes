@@ -1,3 +1,7 @@
+0.18 2015-12-30
+* Better documentation of Unicode handling.
+* Add "downgrade_utf8" method (experimental).
+
 0.17 2015-12-29
 * Add handlers for NaN and infinity.
 * Documented how to remove values set by obj_handler or type_handler.

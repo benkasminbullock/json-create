@@ -34,27 +34,26 @@ premature and silly, especially since the module's documentation
 stated that parts of it were not complete.
 
 Here is the history of this ridiculous and rotten "review". Zoffix
-Znet sent his first "review" shortly after I released version 0.01 of
-this module, containing many insulting remarks, for example comparing
-the module to a turd floating in the ocean, and, absurdly denigrating
-the module on the basis of the debugging backtrace code which was
-still active (and necessary) at that point. This was partly my fault,
-as I'd just got the module to go through CPAN testers successfully and
-was pleased enough with it to give it a non-testing version number,
-even though I wasn't using it in practice at that point. However, the
-module was marked as testing version in its documentation.
+Znet published the first version of his "review" shortly after I
+released version 0.01 of this module. The first version contained many
+insulting remarks. For example it compared the module to a turd
+floating in the ocean. It also, absurdly, denigrated the module on the
+basis of the debugging backtrace code which was still active (and
+necessary) at that point. This was partly my fault, as I'd just got
+the module to go through CPAN testers successfully and was pleased
+enough with it to give it a non-testing version number, even though it
+wasn't fully complete at that point. However, the module was marked as
+testing version in its documentation. Despite that, for some reason,
+Zoffix Znet started complaining about the module as if I had presented
+it with some kind of golden halo or as a perfect and complete
+solution.
 
-For some reason, Zoffix Znet started complaining about the module as
-if I had presented it with some kind of golden halo or as a perfect
-and complete solution, even though it was clearly documented as an
-early testing version.
-
-Hilariously, Zoffix Znet also said I should put a warning notice on
-it, even though it had exactly such a warning notice on it at the
-time, as the first line of the documentation. Please check backpan for
-confirmation. In other words Zoffix Znet had not even bothered to read
-the first line of the module's documentation before writing his
-"review" and sending a bunch of fake bug reports.
+Hilariously, after I pointed out to him that it was an early testing
+version, Zoffix Znet also said I should put a warning notice on it,
+even though it had exactly such a warning notice on it at the time, as
+the first line of the documentation. Please check backpan for
+confirmation. Zoffix Znet had not even bothered to read the first line
+of the module's documentation before writing his "review".
 
 =over
 
@@ -63,16 +62,17 @@ the first line of the module's documentation before writing his
 =back
 
 Again, this is misleading. I didn't delete comments by
-"contributors". I deleted only the comments by Zoffix Znet. Zoffix
-Znet is lying when he says he is a "contributor" to this
+"contributors". I deleted only the comments by one person, Zoffix
+Znet. Zoffix Znet is lying when he says he is a "contributor" to this
 module. Zoffix Znet has not contributed a single line of code or
-documentation to this module. Zoffix Znet is not competent to
-contribute to this module. I believe from reading his bug reports that
-Zoffix Znet has no idea of the issues in programming this module and
-doesn't understand C or XS programming at all. Because he has little
-to no awareness of the issues involved in XS programming, he refused
-to listen when I tried to explain why the module needs extensive
-testing.
+documentation to this module. I will say more. I believe from reading
+his bug reports that Zoffix Znet is not competent to contribute to
+this module. This module is written in C and the Perl extension
+language XS, but from the bug reports I felt that Zoffix Znet didn't
+understand C or XS programming. He refused to listen when I tried to
+explain why the module needs extensive testing, and he didn't
+understand how various programming features would or would not affect
+performance.
 
 =over
 
@@ -84,11 +84,12 @@ It's true that I don't like the other JSON modules on CPAN, otherwise
 why would I have bothered to write this one? I wrote the reviews
 before I started development of this. I don't have multiple accounts
 on CPAN ratings. I did post some problematic benchmarks, but the code
-I used used the same method which is mentioned in the review by
-Perlancar. Apart from the floating point benchmark, I think the
-benchmarks versus JSON::XS in the current module are fairly
-unbiased. If Zoffix Znet has better benchmarks, supply them, instead
-of complaining.
+I used used the same method which is used in Perlancar's benchmark,
+mentioned in another review. Since then I have updated it, and apart
+from the documented issues with the floating point benchmark, I think
+the benchmarks versus L<JSON::XS> and L<Cpanel::JSON::XS> in the
+current module are fairly unbiased. If Zoffix Znet has better
+benchmarks, supply them, instead of complaining.
 
 =over
 
@@ -97,10 +98,14 @@ of complaining.
 =back
 
 Zoffix Znet knew that this was false when he wrote this version of his
-review, since he discussed it with me before he changed his
-review. L<JSON::Parse> is not a prerequisite of
+review, since he discussed the above with me on the github issue
+tracker before he changed his review. It's a shame that I deleted his
+comments I suppose, since if I hadn't I could demonstrate that he's
+lying. L<JSON::Parse> is not a prerequisite of
 L<JSON::Create>. However, it's used for testing, and it is loaded on
-demand if the user chooses validation of user-supplied JSON.
+demand if the user chooses validation of user-supplied JSON. (It may
+also become a dependence for people using older versions of
+ExtUtils::MakeMaker.)
 
 =over
 
@@ -174,7 +179,7 @@ harassment.
 =back
 
 Zoffix Znet cannot seem to make up his mind here what the module is,
-and what his complaint is. Either apparently it's not an original
+and what his complaint is. Here he states that it's not an original
 solution, even though he points out that it actually is different from
 the other modules elsewhere in his review.
 

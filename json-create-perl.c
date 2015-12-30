@@ -86,6 +86,8 @@ typedef struct json_create {
     unsigned int fatal_errors : 1;
     /* Replace bad UTF-8 with the "replacement character". */
     unsigned int replace_bad_utf8 : 1;
+    /* Never upgrade the output to "utf8". */
+    unsigned int downgrade_utf8 : 1;
 }
 json_create_t;
 
@@ -1217,7 +1219,7 @@ json_create_run (json_create_t * jc, SV * input)
     /* Copy the remaining text in jc's buffer into "jc->output". */
     FINALCALL (json_create_buffer_fill (jc));
 
-    if (jc->unicode) {
+    if (jc->unicode && ! jc->downgrade_utf8) {
 	SvUTF8_on (jc->output);
     }
 
