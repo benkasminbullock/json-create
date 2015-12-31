@@ -1,3 +1,8 @@
+0.19 2015-12-31
+* Better documentation of Unicode handling.
+* Unicode upgrade applied for callback return values.
+* UTF-8 check applied for callback return values.
+
 0.18 2015-12-30
 * Better documentation of Unicode handling.
 * Add "downgrade_utf8" method (experimental).

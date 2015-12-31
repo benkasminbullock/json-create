@@ -88,6 +88,8 @@ typedef struct json_create {
     unsigned int replace_bad_utf8 : 1;
     /* Never upgrade the output to "utf8". */
     unsigned int downgrade_utf8 : 1;
+    /* Output may contain invalid UTF-8. */
+    unsigned int utf8_dangerous : 1;
 }
 json_create_t;
 
@@ -796,12 +798,21 @@ json_create_call_to_json (json_create_t * jc, SV * cv, SV * r)
 	/* User returned an undefined value. */
 	SvREFCNT_dec (json);
 	json_create_user_message (jc, json_create_undefined_return_value,
-				  "undefined value from user routine");
+				  "Undefined value from user routine");
 	return json_create_undefined_return_value;
+    }
+    if (SvUTF8 (json)) {
+	/* We have to force everything in the whole output to
+	   Unicode. */
+	jc->unicode = 1;
     }
     jsonc = SvPV (json, jsonl);
     if (jc->validate) {
 	CALL (json_create_validate_user_json (jc, json));
+    }
+    else {
+	/* This string may contain invalid UTF-8. */
+	jc->utf8_dangerous = 1;
     }
     CALL (add_str_len (jc, jsonc, jsonl));
     SvREFCNT_dec (json);
@@ -1220,7 +1231,19 @@ json_create_run (json_create_t * jc, SV * input)
     FINALCALL (json_create_buffer_fill (jc));
 
     if (jc->unicode && ! jc->downgrade_utf8) {
-	SvUTF8_on (jc->output);
+	if (jc->utf8_dangerous) {
+	    if (is_utf8_string ((U8 *) SvPV_nolen (jc->output), SvCUR (jc->output))) {
+		SvUTF8_on (jc->output);
+	    }
+	    else {
+		json_create_user_message (jc, json_create_unicode_bad_utf8,
+					  "Invalid UTF-8 from user routine");
+		return & PL_sv_undef;
+	    }
+	}
+	else {
+	    SvUTF8_on (jc->output);
+	}
     }
 
     /* We didn't allocate any memory except for the SV, all our memory

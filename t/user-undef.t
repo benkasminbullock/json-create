@@ -34,14 +34,7 @@ use JSON::Create;
     my $thingout = $jcut->run ($thing);
     ok (! defined $thingout, "got undefined value after bad sub call");
     ok ($jcutcalled, "called the bad subroutine");
-    ok ($jcutwarning, "got a warning");
-    if ($jcutwarning) {
-	note ($jcutwarning);
-    }
-    like ($jcutwarning, qr/undefined value from user routine/,
-	  "warning looks ok");
-    unlike ($jcutwarning, qr/Use of uninitialized value/,
-	    "Did not get Perl's warning");
+    rightwarning ($jcutwarning);
 
     # Test with object handlers.
 
@@ -68,14 +61,7 @@ use JSON::Create;
     my $thing2out = $jcut2->run ($thing2);
     ok (! defined $thing2out, "got undefined value after bad sub call");
     ok ($jcutcalled, "called the bad subroutine");
-    ok ($jcutwarning, "got a warning");
-    if ($jcutwarning) {
-	note ($jcutwarning);
-    }
-    like ($jcutwarning, qr/undefined value from user routine/,
-	  "warning looks ok");
-    unlike ($jcutwarning, qr/Use of uninitialized value/,
-	    "Did not get Perl's warning");
+    rightwarning ($jcutwarning);
 
     # Test with an object handler.
 
@@ -98,10 +84,21 @@ use JSON::Create;
     if ($jcutwarning) {
 	note ($jcutwarning);
     }
-    like ($jcutwarning, qr/undefined value from user routine/,
-	  "warning looks ok");
-    unlike ($jcutwarning, qr/Use of uninitialized value/,
-	    "Did not get Perl's warning");
+    rightwarning ($jcutwarning);
 };
 
 done_testing ();
+
+sub rightwarning
+{
+    my ($warning) = @_;
+    ok ($warning, "got a warning");
+    if ($warning) {
+	note ($warning);
+    }
+    like ($warning, qr/undefined value from user routine/i,
+	  "warning looks ok");
+    unlike ($warning, qr/Use of uninitialized value/,
+	    "Did not get Perl's warning");
+}
+

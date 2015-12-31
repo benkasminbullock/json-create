@@ -11,6 +11,7 @@ package Monkey::Shines::Bool;
 sub true { my $monkey = 1; return bless \$monkey; }
 sub false { my $monkey = 0; return bless \$monkey; }
 1;
+package main;
 my $monkeys = {
     CuriousGeorge => Monkey::Shines->new (),
     KingKong => Monkey::Shines::Bool->true (),
