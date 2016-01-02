@@ -18,9 +18,8 @@ input, and returns the undefined value.
 =item * Calling convention
 
 The [% handler %] routine is passed a single argument and is expected
-to return a single argument, which is the JSON you wish to output. It
-is called in scalar context. In other words, the call looks like the
-following:
+to return a single argument, the JSON to output. It is called in
+scalar context. In other words, the call looks like the following:
 
      $json = &{$jc->{[% handler %]}} ($item);
 
@@ -49,7 +48,7 @@ The JSON output by your handler may be checked for validity by
 switching on validation using L</validate>. If you do not use this,
 and your return value happens to contain invalid UTF-8, you may see
 the error L</Invalid UTF-8 from user routine>. Please see L</UTF-8
-validation is forced for some cases> for more about this error.
+validation of user-supplied JSON> for more about this error.
 
 =item * Exception handling
 
@@ -69,7 +68,7 @@ produces output
 
 [% INCLUDE $out | xtidy %]
 
-(This example is included as F<[% pl %]> in the distribution.)
+(This example is included as L<F<[% pl %]>|https://api.metacpan.org/source/BKB/JSON-Create-[% version %]/[% pl %]> in the distribution.)
 [% END %]
 =encoding UTF-8
 
@@ -657,7 +656,7 @@ the third call to L</create_json> is not marked as utf8 by Perl but
 still fails as invalid UTF-8.
 
 JSON::Create's insistence on UTF-8 within input strings is related to
-L</Unicode upgrades are not done according to Perl standards>.
+L</Unicode upgrades are not done according to Perl conventions>.
 
 =item Output is valid UTF-8
 
@@ -674,10 +673,10 @@ not switched on validation with L</validate>, and there are no
 character strings (C<utf8>) anywhere in the input. However, if there
 are any Perl character strings (C<utf8>) anywhere in the input, and
 the user has not chosen L</downgrade_utf8>, JSON::Create validates the
-entire output as UTF-8, as described in L</UTF-8 validation is forced
-for some cases>.
+entire output as UTF-8, as described in L</UTF-8 validation of
+user-supplied JSON>.
 
-=item Unicode upgrades are not done according to Perl standards
+=item Unicode upgrades are not done according to Perl conventions
 
 If a single string anywhere in the input is a Perl character string,
 in other words marked as C<utf8>, the entire output string is marked
@@ -693,7 +692,7 @@ JSON::Create:
 
 [% example('json-unicode') %]
 
-The Perl standard is that if a non-utf8 string and a utf8 string are
+The Perl convention is that if a non-utf8 string and a utf8 string are
 combined, they should be combined as L<JSON> does it, by treating each
 byte of the non-utf8 string as if it is a single Unicode code point,
 and writing equivalent UTF-8 bytes for that code point into the
@@ -710,7 +709,7 @@ This example illustrates what happens with non-UTF-8 bytes:
 
 Please see the discussion under L</replace_bad_utf8>.
 
-=item UTF-8 validation is forced for some cases
+=item UTF-8 validation of user-supplied JSON
 
 If you supply JSON via a user routine such as L</obj_handler>, and you
 choose not to validate your output with L</validate>, and the input
@@ -744,7 +743,10 @@ All diagnostics are warnings by default. [% see('fatal_errors') %].
 =item Invalid UTF-8 from user routine
 
 (Warning) A return value from a user routine was not valid UTF-8. See
-L</UTF-8 validation is forced for some cases>.
+L</UTF-8 validation of user-supplied JSON>.
+
+This diagnostic and the corresponding validation of user-supplied JSON
+was added in version 0.19 of the module.
 
 =item JSON::Parse::assert_valid_json failed
 
@@ -809,6 +811,9 @@ The floating point printing loses precision on round trips.
 
 =head1 HISTORY
 
+This module is currently under development and may undergo
+backwards-incompatible changes.
+
 L</set_fformat> was added in version 0.07.
 
 L</validate> was added in version 0.07.
@@ -822,6 +827,9 @@ the loading of JSON::Create failed.
 L</non_finite_handler> was added in version 0.17.
 
 L</downgrade_utf8> was added in version 0.18.
+
+The L</Invalid UTF-8 from user routine> diagnostic was added in
+version 0.19.
 
 =head1 SEE ALSO
 

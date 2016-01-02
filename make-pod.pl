@@ -3,6 +3,7 @@ use warnings;
 use strict;
 use Template;
 use FindBin '$Bin';
+use Perl::Build 'get_version';
 use Perl::Build::Pod ':all';
 use Deploy qw/do_system older/;
 use Getopt::Long;
@@ -15,6 +16,7 @@ if (! $ok) {
     exit;
 }
 
+my $version = get_version (base => $Bin);
 # Names of the input and output files containing the documentation.
 
 my $pod = 'Create.pod';
@@ -23,7 +25,9 @@ my $output = "$Bin/lib/JSON/$pod";
 
 # Template toolkit variable holder
 
-my %vars;
+my %vars = (
+    version => $version,
+);
 
 my $tt = Template->new (
     ABSOLUTE => 1,
