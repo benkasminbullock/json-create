@@ -31,6 +31,14 @@ CODE:
 OUTPUT:
 	RETVAL
 
+SV *
+create_json_strict (input)
+	SV * input;
+CODE:
+	RETVAL = json_create (input);
+OUTPUT:
+	RETVAL
+
 void
 DESTROY (jc)
 	JSON::Create jc;

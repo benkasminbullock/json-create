@@ -1252,8 +1252,29 @@ json_create_run (json_create_t * jc, SV * input)
     return jc->output;
 }
 
-/* Master routine, callers should only ever use this. Everything above
-   is only for the sake of "json_create" to use. */
+/* Entry point for "create_json_strict". */
+
+static INLINE SV *
+json_create_strict (SV * input)
+{
+    /* With all the options, this really needs to be blanked out. Thus
+       "buffer" is moved from being inside "jc" to being inside
+       "json_create_run" above. */
+    json_create_t jc = {0};
+    /* Set up the default options. */
+
+    /* Floating point number format. */
+    jc.fformat = 0;
+    /* Escape slash. */
+    jc.escape_slash = 0;
+
+    jc.unicode_escape_all = 0;
+    jc.handlers = 0;
+    jc.type_handler = 0;
+    return json_create_run (& jc, input);
+}
+
+/* Entry point for "create_json". */
 
 static INLINE SV *
 json_create (SV * input)

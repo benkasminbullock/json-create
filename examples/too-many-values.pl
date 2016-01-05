@@ -5,7 +5,7 @@ use JSON::Create;
 my $jc = JSON::Create->new ();
 $jc->validate (1);
 $jc->type_handler (sub {
-		       return (1, 2, 3);
+		       return ('"a"', '"b"', '"c"');
 		   });
 print $jc->run ({ x => *STDOUT }); 
 

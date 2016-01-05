@@ -1,7 +1,7 @@
 package JSON::Create;
 require Exporter;
 @ISA = qw(Exporter);
-@EXPORT_OK = qw/create_json/;
+@EXPORT_OK = qw/create_json create_json_strict/;
 %EXPORT_TAGS = (
     all => \@EXPORT_OK,
 );
