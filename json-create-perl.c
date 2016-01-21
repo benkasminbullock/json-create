@@ -787,13 +787,14 @@ json_create_call_to_json (json_create_t * jc, SV * cv, SV * r)
     
     PUSHMARK (SP);
     //https://metacpan.org/source/AMBS/Math-GSL-0.35/swig/gsl_typemaps.i#L482
-    XPUSHs (sv_2mortal(newRV(r)));
+    XPUSHs (sv_2mortal (newRV (r)));
     PUTBACK;
     call_sv (cv, 0);
     json = POPs;
     SvREFCNT_inc (json);
     FREETMPS;
     LEAVE;  
+
     if (! SvOK (json)) {
 	/* User returned an undefined value. */
 	SvREFCNT_dec (json);
@@ -995,11 +996,6 @@ json_create_handle_ref (json_create_t * jc, SV * input)
 	else {
 	    CALL (json_create_add_string (jc, r));
 	}
-	break;
-
-    case SVt_PVGV:
-	/* Completely untested. */
-	CALL (json_create_add_string (jc, r));
 	break;
 
     case SVt_PV:

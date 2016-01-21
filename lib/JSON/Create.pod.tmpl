@@ -88,7 +88,8 @@ corresponding to git commit [% commit.commit %].
 =head1 DESCRIPTION
 
 JSON::Create encodes Perl variables into the JSON format. It offers
-L</create_json>, which uses common defaults, and a customizable object
+L</create_json>, which uses common defaults, L</create_json_strict>,
+which accepts only unambiguous inputs, and a customizable object
 created with L</new> and run with L</run> where the user can specify a
 variety of behaviours.
 
@@ -97,8 +98,8 @@ types. It handles no string encoding except UTF-8. The module supports
 serialization of objects and other non-data types via user-defined
 callbacks.
 
-Errors in processing within L</create_json> or L</run> result in a
-warning and an undefined return value. [% see('fatal_errors') %].
+Errors in processing result in a warning and an undefined return
+value. [% see('fatal_errors') %].
 
 This module documentation is generated from machine readable code. All
 of the example programs in this documentation may be found in the
