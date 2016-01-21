@@ -35,7 +35,7 @@ SV *
 create_json_strict (input)
 	SV * input;
 CODE:
-	RETVAL = json_create (input);
+	RETVAL = json_create_strict (input);
 OUTPUT:
 	RETVAL
 
@@ -124,6 +124,13 @@ downgrade_utf8 (jc, onoff)
 	SV * onoff;
 CODE:
 	jc->downgrade_utf8 = SvTRUE (onoff) ? 1 : 0;
+
+void
+strict (jc, onoff)
+	JSON::Create jc;
+	SV * onoff;
+CODE:
+	jc->strict = SvTRUE (onoff) ? 1 : 0;
 
 void
 set_handlers (jc, handlers)

@@ -90,6 +90,8 @@ typedef struct json_create {
     unsigned int downgrade_utf8 : 1;
     /* Output may contain invalid UTF-8. */
     unsigned int utf8_dangerous : 1;
+    /* Strict mode, reject lots of things. */
+    unsigned int strict : 1;
 }
 json_create_t;
 
@@ -562,13 +564,11 @@ json_create_add_string (json_create_t * jc, SV * input)
 {
     char * istring;
     STRLEN ilength;
-    /*
-      "jc->unicode" is true if Perl says that anything in the whole of
-      the input to "json_create" is a "SvUTF8" scalar.
-    */
     istring = SvPV (input, ilength);
     if (SvUTF8 (input)) {
-	/* We have to force everything in the whole output to
+	/* "jc->unicode" is true if Perl says that anything in the
+	   whole of the input to "json_create" is a "SvUTF8"
+	   scalar. We have to force everything in the whole output to
 	   Unicode. */
 	jc->unicode = 1;
     }
@@ -1257,20 +1257,8 @@ json_create_run (json_create_t * jc, SV * input)
 static INLINE SV *
 json_create_strict (SV * input)
 {
-    /* With all the options, this really needs to be blanked out. Thus
-       "buffer" is moved from being inside "jc" to being inside
-       "json_create_run" above. */
     json_create_t jc = {0};
-    /* Set up the default options. */
-
-    /* Floating point number format. */
-    jc.fformat = 0;
-    /* Escape slash. */
-    jc.escape_slash = 0;
-
-    jc.unicode_escape_all = 0;
-    jc.handlers = 0;
-    jc.type_handler = 0;
+    jc.strict = 1;
     return json_create_run (& jc, input);
 }
 
@@ -1279,20 +1267,7 @@ json_create_strict (SV * input)
 static INLINE SV *
 json_create (SV * input)
 {
-    /* With all the options, this really needs to be blanked out. Thus
-       "buffer" is moved from being inside "jc" to being inside
-       "json_create_run" above. */
     json_create_t jc = {0};
-    /* Set up the default options. */
-
-    /* Floating point number format. */
-    jc.fformat = 0;
-    /* Escape slash. */
-    jc.escape_slash = 0;
-
-    jc.unicode_escape_all = 0;
-    jc.handlers = 0;
-    jc.type_handler = 0;
     return json_create_run (& jc, input);
 }
 

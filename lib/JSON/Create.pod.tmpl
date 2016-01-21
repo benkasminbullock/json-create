@@ -120,6 +120,28 @@ value is the output JSON.
 Details of the conversion of each type are given in
 L</CONVERSIONS>.
 
+=head2 create_json_strict
+
+    my $json = create_json_strict (\%hash);
+
+Convert a Perl data structure into JSON. This differs from
+L</create_json> by rejecting 
+
+=over
+
+=item * all non-data types, including objects,
+
+=item * strings containing non-ASCII bytes (bytes with values of from 128 to 255) which are not marked as C<utf8> (character strings),
+
+=item * non-finite floating point numbers (NaN or infinite values), and
+
+=item * scalar references.
+
+=back
+
+Calling this with such inputs results in a return value of C<undef>
+(the undefined value) and a warning being printed.
+
 =head1 CONVERSIONS
 
 This section details what conversions are applied to the various
@@ -170,6 +192,10 @@ corner cases, see L</UNICODE HANDLING>.)
 
 Some whitespace and control characters must be also escaped for the
 output to be valid JSON. (See L</RFC 7159>.) 
+
+In addition to this, L</create_json_strict> rejects inputs containing
+non-ASCII bytes (bytes with values of from 128 to 255) which are not
+marked as character strings.
 
 =head4 Control characters and whitespace
 
@@ -267,28 +293,31 @@ handling, are described in the following subsections.
 =head3 Scalar references
 
 Scalar references are dereferenced, then treated as scalars in the way
-described in L</Scalars>. There is currently no way to alter this
-behaviour. See L</BUGS>.
+described in L</Scalars>. L</create_json_strict> or the L</strict>
+method force rejection of scalar references.
 
 =head3 Objects
 
-By default, Perl objects are handled as if non-object types. In other
-words, unless you specify object handling, the module breaks
-encapsulation. This behaviour can be altered for specified types of
-object with the method L</obj>, or you can supply a general object
-handler with L</obj_handler>.
+L</create_json> handles Perl objects as if non-object types. In other
+words, unless you specify object handling, it breaks
+encapsulation. L</create_json_strict> rejects Perl objects. A
+JSON::Create object created with L</new> can handle specified types of
+object with method L</obj>, or with a general object handler supplied
+via L</obj_handler>.
 
 =head3 Code, regexes, and other references
 
-A code or other reference (regexes, globs, etc.) in the input prints a
-warning and causes the entire return value to be the undefined
-value. [% see('type_handler') %].
+A code or other reference (regexes, globs, etc.) in the input of
+L</create_json> or L</create_json_strict> prints a warning and causes
+the entire return value to be the undefined value. [%
+see('type_handler') %].
 
 =head1 METHODS
 
 If you need to alter the format of the output from the defaults of
-L</create_json>, create an object with L</new> and then set
-preferences on that object before producing output with L</run>.
+L</create_json> or L</create_json_strict>, create an object with
+L</new> and then set preferences on that object before producing
+output with L</run>.
 
 =head2 new
 
@@ -568,6 +597,20 @@ buffer overflows within the module.
 
 [% since('0.07') %]
 
+=head3 strict
+
+    $jc->strict (1);
+
+This switches on the behaviours of L</create_json_strict>.  This means
+that all non-data types including object types, scalar references,
+non-ASCII bytes within non-character strings, and non-finite floating
+point numbers in the input cause the serialization to fail unless you
+explicitly set handlers for these types with L</obj>, L</obj_handler>,
+L</type_handler>, and L</non_finite_handler>. The rejection of
+non-ASCII bytes in non-C<utf8> strings cannot be overridden, so users
+need to ensure that all input is either ASCII-only or character
+string-only (C<utf8>).
+
 =head3 type_handler
 
     $jc->type_handler (sub {return 'null'});
@@ -758,6 +801,11 @@ All diagnostics are warnings by default. [% see('fatal_errors') %].
 
 =over
 
+=item Input's type cannot be serialized to JSON
+
+(Warning) A reference type such as a code reference, regexp, or glob
+was found in the user's input. See L</type_handler>.
+
 =item Invalid UTF-8
 
 (Warning) Bytes in a Perl string were not valid UTF-8. [% see('replace_bad_utf8') %].
@@ -774,10 +822,13 @@ was added in version 0.19 of the module.
 
 (Warning) The user requested validation with L</validate> and this failed.
 
-=item Input's type cannot be serialized to JSON
+=item Non-ASCII bytes in non-utf8 string
 
-(Warning) A reference type such as a code reference, regexp, or glob
-was found in the user's input. See L</type_handler>.
+(Warning) The user tried to encode non-ASCII bytes in a non-C<utf8>
+string.
+
+This diagnostic was added in version 0.20 of the module together with
+L</create_json_strict> and the L</strict> method.
 
 =item Undefined value from user routine
 
@@ -830,8 +881,6 @@ implemented in JSON::Create::PP.
 There is a bug in JSON::Create::PP's handling of non-integer numbers.
 
 The floating point printing loses precision on round trips.
-
-The handling of scalar references out to be more flexible.
 
 =head1 HISTORY
 
