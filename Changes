@@ -1,3 +1,6 @@
+0.19_01 2016-01-22
+* Add a "strict" mode
+
 0.19 2015-12-31
 * Better documentation of Unicode handling.
 * Unicode upgrade applied for callback return values.
