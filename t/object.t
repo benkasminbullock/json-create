@@ -9,7 +9,7 @@ binmode $builder->failure_output, ":utf8";
 binmode $builder->todo_output,    ":utf8";
 binmode STDOUT, ":encoding(utf8)";
 binmode STDERR, ":encoding(utf8)";
-use JSON::Create 'create_json';
+use JSON::Create qw/create_json create_json_strict/;
 
 # Test against hash reference.
 
@@ -21,6 +21,13 @@ my $mm = Maka::Maka->new ();
 my $outmm = create_json ($mm);
 is ($outmm, '{"mog":"cat"}',
     "Perl object containing hash reference");
+{
+    my $warning;
+    local $SIG{__WARN__} = sub {$warning = "@_"};
+    is (create_json_strict ($mm), undef, "get undefined value with strict routine");
+    like ($warning, qr/Object cannot be serialized to JSON/, "get correct warning");
+    like ($warning, qr/Maka::Maka/, "get object name in warning");
+}
 
 # Test against scalar reference.
 

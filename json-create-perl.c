@@ -40,8 +40,12 @@ typedef enum {
     json_create_invalid_user_json,
     /* User gave us an undefined value from a user subroutine. */
     json_create_undefined_return_value,
-    /* */
+    /* Rejected non-ASCII, non-character string in strict mode. */
     json_create_non_ascii_byte,
+    /* Rejected scalar reference in strict mode. */
+    json_create_scalar_reference,
+    /* Rejected non-finite number in strict mode. */
+    json_create_non_finite_number,
 }
 json_create_status_t;
 
@@ -138,6 +142,8 @@ static int (* json_create_error_handler) (const char * file, int line_number, co
 	case json_create_invalid_user_json:			\
 	case json_create_undefined_return_value:		\
 	case json_create_non_ascii_byte:			\
+	case json_create_scalar_reference:			\
+	case json_create_non_finite_number:			\
 	    break;						\
 	    							\
 	    /* All other exceptions are our bugs. */		\
@@ -222,10 +228,10 @@ add_char (json_create_t * jc, unsigned char c)
 
 /* Add a nul-terminated string to "jc", up to the nul byte. This
    should not be used unless it's strictly necessary, prefer to use
-   "add_str_len" instead. This is not intended to be Unicode-safe, it
-   is only to be used for strings which we know do not need to be
-   checked for Unicode validity (for example sprintf'd numbers or
-   something). Basically, don't use this. */
+   "add_str_len" instead. Basically, don't use this. This is not
+   intended to be Unicode-safe, it is only to be used for strings
+   which we know do not need to be checked for Unicode validity (for
+   example sprintf'd numbers or something). */
 
 static INLINE json_create_status_t
 add_str (json_create_t * jc, const char * s)
@@ -390,6 +396,9 @@ static jump_t jump[0x100] = {
     UT3,UT3,UT3,UT3,UT3,UT3,UT3,UT3,UT3,UT3,UT3,UT3,UT3,UT3,UT3,UT3,
     UT4,UT4,UT4,UT4,UT4,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,
 };
+
+/* Need this twice, once within the ASCII handler and once within the
+   Unicode handler. */
 
 #define ASCII \
 	case CTL:\
@@ -882,6 +891,11 @@ json_create_add_float (json_create_t * jc, SV * sv)
 	    CALL (json_create_call_to_json (jc, jc->non_finite_handler, sv));
 	}
 	else {
+	    if (jc->strict) {
+		json_create_user_message (jc, json_create_non_finite_number,
+					  "Non-finite number in input");
+		return json_create_non_finite_number;
+	    }
 	    if (isnan (fv)) {
 		ADD ("\"nan\"");
 	    }
@@ -1013,6 +1027,14 @@ json_create_handle_unknown_type (json_create_t * jc, SV * r)
     return json_create_ok;
 }
 
+#define STRICT_NO_SCALAR						\
+    if (jc->strict) {							\
+	json_create_user_message (jc, json_create_scalar_reference,	\
+				  "Scalar reference rejected");		\
+	return json_create_scalar_reference;				\
+    }
+
+
 static INLINE json_create_status_t
 json_create_handle_ref (json_create_t * jc, SV * input)
 {
@@ -1020,6 +1042,10 @@ json_create_handle_ref (json_create_t * jc, SV * input)
     SV * r;
     r = SvRV (input);
     t = SvTYPE (r);
+#if 0
+    fprintf (stderr, "%s:%d: type is %d\n", __FILE__, 
+	     __LINE__, t);
+#endif /* 0 */
     switch (t) {
     case SVt_PVAV:
 	CALL (json_create_add_array (jc, (AV *) r));
@@ -1029,7 +1055,25 @@ json_create_handle_ref (json_create_t * jc, SV * input)
 	CALL (json_create_add_object (jc, (HV *) r));
 	break;
 
+    case SVt_NV:
+    case SVt_PVNV:
+	STRICT_NO_SCALAR;
+	CALL (json_create_add_float (jc, r));
+	break;
+
+    case SVt_IV:
+    case SVt_PVIV:
+	STRICT_NO_SCALAR;
+	CALL (json_create_add_integer (jc, r));
+	break;
+
+    case SVt_PV:
+	STRICT_NO_SCALAR;
+	CALL (json_create_add_string (jc, r));
+	break;
+
     case SVt_PVMG:
+	STRICT_NO_SCALAR;
 	/* There are some edge cases with blessed references
 	   containing numbers which we need to handle correctly. */
 	if (SvIOK (r)) {
@@ -1043,21 +1087,29 @@ json_create_handle_ref (json_create_t * jc, SV * input)
 	}
 	break;
 
-    case SVt_PV:
-	CALL (json_create_add_string (jc, r));
-	break;
-
     default:
 	CALL (json_create_handle_unknown_type (jc, r));
     }
     return json_create_ok;
 }
 
+/* In strict mode, if no object handlers exist, then we reject the
+   object. */
+
+#define REJECT_OBJECT(objtype)						\
+    json_create_user_message (jc, json_create_unknown_type,		\
+			      "Object cannot be "			\
+			      "serialized to JSON: %s",			\
+			      objtype);					\
+    return json_create_unknown_type;
+
+
 static INLINE json_create_status_t
 json_create_handle_object (json_create_t * jc, SV * input)
 {
     const char * objtype;
     SV * r;
+
     r = SvRV (input);
     /* The second argument to sv_reftype is true if we
        look it up in the object table, false
@@ -1137,11 +1189,7 @@ json_create_handle_object (json_create_t * jc, SV * input)
 #endif /* 0 */
 	    nothandled:
 		if (jc->strict) {
-		    /* In strict mode, if no object handlers exist,
-		       then we reject the object. */
-		    json_create_user_message (jc, json_create_unknown_type,
-					      "Object cannot be serialized to JSON: %s", objtype);
-		    return json_create_unknown_type;
+		    REJECT_OBJECT(objtype);
 		}
 		CALL (json_create_handle_ref (jc, input));
 	    }
@@ -1175,8 +1223,16 @@ json_create_recursively (json_create_t * jc, SV * input)
     }
     if (SvROK (input)) {
 	/* We have a reference, so decide what to do with it. */
-	if (sv_isobject (input) && (jc->handlers || jc->obj_handler)) {
-	    CALL (json_create_handle_object (jc, input));
+	if (sv_isobject (input)) {
+	    if (jc->handlers || jc->obj_handler) {
+		CALL (json_create_handle_object (jc, input));
+	    }
+	    else if (jc->strict) {
+		REJECT_OBJECT (sv_reftype (SvRV (input), 1));
+	    }
+	    else {
+		CALL (json_create_handle_ref (jc, input));
+	    }
 	}
 	else {
 	    CALL (json_create_handle_ref (jc, input));
