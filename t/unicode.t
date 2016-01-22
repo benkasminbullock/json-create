@@ -10,7 +10,7 @@ binmode $builder->todo_output,    ":utf8";
 binmode STDOUT, ":encoding(utf8)";
 binmode STDERR, ":encoding(utf8)";
 
-use JSON::Create 'create_json';
+use JSON::Create qw/create_json create_json_strict/;
 
 # Test it with Perl's unicode flag switched on everywhere.
 
@@ -21,13 +21,17 @@ my %unihash = (
     'あ' => '亜',
 );
 
-my $out = create_json (\%unihash);
-ok ($out, "Got output from Unicode hash");
-ok (utf8::is_utf8 ($out), "Output is marked as Unicode");
-# Key/value pairs may be in either order, so we have to use "like"
-# to test the key / value pairs.
-like ($out, qr/"う":"雨"/, "key / value pair u");
-like ($out, qr/"あ":"亜"/, "key / value pair a");
+
+for my $func (\&create_json, \&create_json_strict) {
+    my $out = &{$func} (\%unihash);
+    ok ($out, "Got output from Unicode hash");
+    ok (utf8::is_utf8 ($out), "Output is marked as Unicode");
+    # Key/value pairs may be in either order, so we have to use "like"
+    # to test the key / value pairs.
+    like ($out, qr/"う":"雨"/, "key / value pair u");
+    like ($out, qr/"あ":"亜"/, "key / value pair a");
+}
+
 
 # Now test the other option, switch off the Perl unicode flag and
 # check that it still works.
@@ -46,6 +50,22 @@ ok (! utf8::is_utf8 ($nonuout), "Output is not marked as Unicode");
 # to test the key / value pairs.
 like ($nonuout, qr/"う":"雨"/, "key / value pair u");
 like ($nonuout, qr/"あ":"亜"/, "key / value pair a");
+{
+    my $warning;
+    local $SIG{__WARN__} = sub {$warning = "@_"};
+    my $nonuout = create_json_strict (\%nonunihash);
+    is ($nonuout, undef, "Got undefined value sending non-Unicode bytes to strict routine");
+    like ($warning, qr/Non-ASCII byte in non-utf8 string/);
+
+    $warning = undef;
+
+    my $jcs = JSON::Create->new ();
+    $jcs->strict (1);
+    my $nonuoutobj = $jcs->run (\%nonunihash);
+    is ($nonuoutobj, undef, "Got undefined value sending non-Unicode bytes to strict object");
+    like ($warning, qr/Non-ASCII byte in non-utf8 string/);
+
+}
 
 use utf8;
 

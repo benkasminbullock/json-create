@@ -823,10 +823,18 @@ was added in version 0.19 of the module.
 
 (Warning) The user requested validation with L</validate> and this failed.
 
-=item Non-ASCII bytes in non-utf8 string
+=item Non-ASCII byte in non-utf8 string
 
-(Warning) The user tried to encode non-ASCII bytes in a non-C<utf8>
-string.
+(Warning) The user tried to encode a string containing a non-ASCII
+byte in a non-C<utf8> string. This diagnostic occurs with either
+L</create_json_strict> or L</strict>.
+
+This diagnostic was added in version 0.20 of the module together with
+L</create_json_strict> and the L</strict> method.
+
+=item Object cannot be serialized to JSON
+
+(Warning) An object in the input could not be serialized to JSON.
 
 This diagnostic was added in version 0.20 of the module together with
 L</create_json_strict> and the L</strict> method.

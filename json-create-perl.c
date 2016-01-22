@@ -40,6 +40,8 @@ typedef enum {
     json_create_invalid_user_json,
     /* User gave us an undefined value from a user subroutine. */
     json_create_undefined_return_value,
+    /* */
+    json_create_non_ascii_byte,
 }
 json_create_status_t;
 
@@ -135,6 +137,7 @@ static int (* json_create_error_handler) (const char * file, int line_number, co
 	case json_create_unicode_bad_utf8:			\
 	case json_create_invalid_user_json:			\
 	case json_create_undefined_return_value:		\
+	case json_create_non_ascii_byte:			\
 	    break;						\
 	    							\
 	    /* All other exceptions are our bugs. */		\
@@ -388,6 +391,88 @@ static jump_t jump[0x100] = {
     UT4,UT4,UT4,UT4,UT4,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,BAD,
 };
 
+#define ASCII \
+	case CTL:\
+	    CALL (add_one_u (jc, (unsigned int) c));\
+	    i++;\
+	    break;\
+\
+	case BSX:\
+	    ADD ("\\b");\
+	    i++;\
+	    break;\
+\
+	case HTX:\
+	    ADD ("\\t");\
+	    i++;\
+	    break;\
+\
+	case NLX:\
+	    ADD ("\\n");\
+	    i++;\
+	    break;\
+\
+	case NPX:\
+	    ADD ("\\f");\
+	    i++;\
+	    break;\
+\
+	case CRX:\
+	    ADD ("\\r");\
+	    i++;\
+	    break;\
+\
+	case ASC:\
+	    CALL (add_char (jc, c));\
+	    i++;\
+	    break;\
+\
+	case QUO:\
+	    ADD ("\\\"");\
+	    i++;\
+	    break;\
+\
+	case FSL:\
+	    if (jc->escape_slash) {\
+		ADD ("\\/");\
+	    }\
+	    else {\
+		CALL (add_char (jc, c));\
+	    }\
+	    i++;\
+	    break;\
+\
+	case BSL:\
+	    ADD ("\\\\");\
+	    i++;\
+	    break;
+
+
+static INLINE json_create_status_t
+json_create_add_ascii_key_len (json_create_t * jc, const unsigned char * key, STRLEN keylen)
+{
+    int i;
+
+    CALL (add_char (jc, '"'));
+    for (i = 0; i < keylen; ) {
+	char c;
+	c = key[i];
+	switch (jump[c]) {
+
+	ASCII;
+
+	default:
+	    json_create_user_message (jc, json_create_non_ascii_byte,
+				      "Non-ASCII byte in non-utf8 string: %X",
+				      key[i]);
+	    return json_create_non_ascii_byte;
+	}
+    }
+    CALL (add_char (jc, '"'));
+    return json_create_ok;
+}
+
+
 /* Add a string to the buffer with quotes around it and escapes for
    the escapables. */
 
@@ -403,60 +488,7 @@ json_create_add_key_len (json_create_t * jc, const unsigned char * key, STRLEN k
 
 	switch (jump[c]) {
 
-	case CTL:
-	    CALL (add_one_u (jc, (unsigned int) c));
-	    i++;
-	    break;
-
-	case BSX:
-	    ADD ("\\b");
-	    i++;
-	    break;
-
-	case HTX:
-	    ADD ("\\t");
-	    i++;
-	    break;
-
-	case NLX:
-	    ADD ("\\n");
-	    i++;
-	    break;
-
-	case NPX:
-	    ADD ("\\f");
-	    i++;
-	    break;
-
-	case CRX:
-	    ADD ("\\r");
-	    i++;
-	    break;
-
-	case ASC:
-	    CALL (add_char (jc, c));
-	    i++;
-	    break;
-
-	case QUO:
-	    ADD ("\\\"");
-	    i++;
-	    break;
-
-	case FSL:
-	    if (jc->escape_slash) {
-		ADD ("\\/");
-	    }
-	    else {
-		CALL (add_char (jc, c));
-	    }
-	    i++;
-	    break;
-
-	case BSL:
-	    ADD ("\\\\");
-	    i++;
-	    break;
+	ASCII;
 
 	case BAD:
 	    BADUTF8;
@@ -571,6 +603,11 @@ json_create_add_string (json_create_t * jc, SV * input)
 	   scalar. We have to force everything in the whole output to
 	   Unicode. */
 	jc->unicode = 1;
+    }
+    else if (jc->strict) {
+	/* Backtrace fall through, remember to check the caller's line. */
+	return json_create_add_ascii_key_len (jc, (unsigned char *) istring,
+					      (STRLEN) ilength);
     }
     /* Backtrace fall through, remember to check the caller's line. */
     return json_create_add_key_len (jc, (unsigned char *) istring,
@@ -911,17 +948,25 @@ json_create_add_object (json_create_t * jc, HV * input_hv)
 	/* The following is necessary because "hv_iternextsv" doesn't
 	   tell us whether the key is "SvUTF8" or not. */
 	he = hv_iternext (input_hv);
-	if (HeUTF8 (he)) {
-	    jc->unicode = 1;
-	}
 	key = hv_iterkey (he, & keylen);
 	value = hv_iterval (input_hv, he);
 
 	/* Write the information into the buffer. */
 
 	COMMA;
-	CALL (json_create_add_key_len (jc, (const unsigned char *) key,
-				       (STRLEN) keylen));
+	if (HeUTF8 (he)) {
+	    jc->unicode = 1;
+	    CALL (json_create_add_key_len (jc, (const unsigned char *) key,
+					   (STRLEN) keylen));
+	}
+	else if (jc->strict) {
+	    CALL (json_create_add_ascii_key_len (jc, (unsigned char *) key,
+						 (STRLEN) keylen));
+	}
+	else {
+	    CALL (json_create_add_key_len (jc, (const unsigned char *) key,
+					   (STRLEN) keylen));
+	}
 	CALL (add_char (jc, ':'));
 	CALL (json_create_recursively (jc, value));
     }
@@ -1091,6 +1136,13 @@ json_create_handle_object (json_create_t * jc, SV * input)
 		}
 #endif /* 0 */
 	    nothandled:
+		if (jc->strict) {
+		    /* In strict mode, if no object handlers exist,
+		       then we reject the object. */
+		    json_create_user_message (jc, json_create_unknown_type,
+					      "Object cannot be serialized to JSON: %s", objtype);
+		    return json_create_unknown_type;
+		}
 		CALL (json_create_handle_ref (jc, input));
 	    }
 	}
