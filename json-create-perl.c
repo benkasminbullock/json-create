@@ -613,13 +613,11 @@ json_create_add_string (json_create_t * jc, SV * input)
 	   Unicode. */
 	jc->unicode = 1;
     }
-#if 0
     else if (jc->strict) {
 	/* Backtrace fall through, remember to check the caller's line. */
 	return json_create_add_ascii_key_len (jc, (unsigned char *) istring,
 					      (STRLEN) ilength);
     }
-#endif
     /* Backtrace fall through, remember to check the caller's line. */
     return json_create_add_key_len (jc, (unsigned char *) istring,
 				    (STRLEN) ilength);
