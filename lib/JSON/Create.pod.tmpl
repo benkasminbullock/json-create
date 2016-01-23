@@ -5,6 +5,9 @@ This behaviour can be altered with the method L</[% method %]>
 [% MACRO since(version) BLOCK -%]
 This method was added in version [% version %] of the module.
 [%- END %]
+[% MACRO fsince(version) BLOCK -%]
+This function was added in version [% version %] of the module.
+[%- END %]
 [% MACRO handler_undef BLOCK -%]
 
 If your handler returns the undefined value, L</run> prints a warning
@@ -115,8 +118,8 @@ Perl.
 
     my $json = create_json (\%hash);
 
-Convert a Perl hash reference or array reference into JSON. The return
-value is the output JSON.
+This converts a hash reference, array reference, or scalar into
+JSON. The return value is the output JSON.
 
 Details of the conversion of each type are given in
 L</CONVERSIONS>.
@@ -125,23 +128,10 @@ L</CONVERSIONS>.
 
     my $json = create_json_strict (\%hash);
 
-Convert a Perl data structure into JSON. This differs from
-L</create_json> by rejecting 
+The same as L</create_json>, except that it rejects ambiguous
+inputs. See L</strict> for details.
 
-=over
-
-=item * all non-data types, including objects,
-
-=item * strings containing non-ASCII bytes (bytes with values of from 128 to 255) which are not marked as C<utf8> (character strings),
-
-=item * non-finite floating point numbers (NaN or infinite values), and
-
-=item * scalar references.
-
-=back
-
-Calling this with such inputs results in a return value of C<undef>
-(the undefined value) and a warning being printed.
+[% fsince('0.20') %]
 
 =head1 CONVERSIONS
 
@@ -150,9 +140,9 @@ inputs to produce outputs.
 
 =head2 Hashes
 
-Associative arrays are converted to JSON objects. The keys are written
-into JSON as strings, with any control characters escaped. The order
-of the keys is as they are supplied by Perl.
+JSON::Create turns associative arrays into JSON objects. The keys are
+written into JSON as strings, with any control characters escaped. The
+order of the keys is as they are supplied by Perl.
 
 [% example('hash') %]
 
@@ -194,9 +184,9 @@ corner cases, see L</UNICODE HANDLING>.)
 Some whitespace and control characters must be also escaped for the
 output to be valid JSON. (See L</RFC 7159>.) 
 
-In addition to this, L</create_json_strict> rejects inputs containing
-non-ASCII bytes (bytes with values of from 128 to 255) which are not
-marked as character strings.
+In addition to this, L</create_json_strict> or the L</strict> option
+reject inputs containing non-ASCII bytes (bytes with values of from
+128 to 255) which are not marked as character strings.
 
 =head4 Control characters and whitespace
 
@@ -215,8 +205,8 @@ This example demonstrates some of the necessary escaping:
     my $out = create_json (["\x{2028}"]);
     # $out = '["\u2028"]'
 
-Although it is not required by the JSON standard, L</create_json>
-escapes Unicode code points U+2028 and U+2029 as C<\u2028> and
+Although it is not required by the JSON standard, JSON::Create by
+default escapes Unicode code points U+2028 and U+2029 as C<\u2028> and
 C<\u2029> for JavaScript compatibility. [%
 see('no_javascript_safe')%].
 
@@ -232,7 +222,7 @@ Terminators").
 =head4 Other escapes
 
 The forward slash, /, known as "solidus" in the JSON specification,
-does not have to be escaped, and L</create_json>'s default is not to
+does not have to be escaped, and JSON::Create's default is not to
 escape it. [% see('escape_slash') %].
 
 Other Unicode values are not escaped.  [% see('unicode_escape_all')
@@ -254,11 +244,8 @@ C<"%g">, like
 
 [% see('set_fformat') %]
 
-NaN (not a number) values are converted to C<"nan"> (the letters
-C<nan> surrounded by double quotes). Positive and negative infinity
-are converted to C<"inf"> and C<"-inf"> respectively. [%
-see('non_finite_handler') %]. JSON does not allow NaN or infinity as bare
-values. From page 6 of L</RFC 7159>:
+JSON does not allow NaN or infinity as bare values. From page 6 of
+L</RFC 7159>:
 
 =over
 
@@ -267,9 +254,28 @@ as Infinity and NaN) are not permitted.
 
 =back
 
+L</create_json> converts NaN (not a number) values to
+C<"nan"> (the letters C<nan> surrounded by double quotes), and
+positive and negative infinity to C<"inf"> and C<"-inf">
+respectively.
+
+L</create_json_strict> disallows non-finite numbers. If a non-finite
+number appears within its input, it prints a warning L</Non-finite
+number in input> and returns the undefined value:
+
+[% example('strict-non-finite') %]
+
+A JSON::Create object created with L</new> converts in the same way as
+L</create_json>.  [% see('non_finite_handler') %]. If L</strict> is
+specified, non-finite numbers are passed to L</non_finite_handler> if
+it is set, and if not, it prints a warning L</Non-finite number in
+input> and returns the undefined value.
+
 =head3 The undefined value
 
-Undefined values are mapped to the JSON literal "null".
+Undefined values in the input are mapped to the JSON literal "null".
+
+[% example('undef') %]
 
 =head3 Booleans
 
@@ -293,25 +299,44 @@ handling, are described in the following subsections.
 
 =head3 Scalar references
 
-Scalar references are dereferenced, then treated as scalars in the way
-described in L</Scalars>. L</create_json_strict> or the L</strict>
-method force rejection of scalar references.
+L</create_json> dereferences scalar references, then treats them as
+scalars in the way described in L</Scalars>. 
+
+L</create_json_strict> rejects scalar references. Input containing a
+scalar reference causes a warning L</Input's type cannot be serialized
+to JSON> and the undefined value to be returned.
+
+A JSON::Create object created with L</new> behaves as L</create_json>
+unless the L</strict> option is specified. If the strict option is
+specified, scalar references are passed through to L</type_handler> if
+it is set, otherwise input containing a scalar reference causes a
+warning L</Input's type cannot be serialized to JSON> and the
+undefined value to be returned.
 
 =head3 Objects
 
-L</create_json> handles Perl objects as if non-object types. In other
-words, unless you specify object handling, it breaks
-encapsulation. L</create_json_strict> rejects Perl objects. A
-JSON::Create object created with L</new> can handle specified types of
-object with method L</obj>, or with a general object handler supplied
-via L</obj_handler>.
+L</create_json> handles Perl objects as if non-object
+types. In other words, unless you specify object handling, it breaks
+encapsulation. 
+
+L</create_json_strict> rejects input containing Perl objects. If the
+input contains an object (a blessed reference), a warning L</Object
+cannot be serialized to JSON> is printed and the undefined value
+returned.
+
+A JSON::Create object created with L</new> can handle specified types
+of object with method L</obj>, or with a general object handler
+supplied via L</obj_handler>. By default it behaves like
+L</create_json>. If L</strict> is chosen, it rejects input containing
+Perl objects unless the user sets a handler for them with L</obj> or
+L</obj_handler>.
 
 =head3 Code, regexes, and other references
 
 A code or other reference (regexes, globs, etc.) in the input of
-L</create_json> or L</create_json_strict> prints a warning and causes
-the entire return value to be the undefined value. [%
-see('type_handler') %].
+L</create_json> or L</create_json_strict> prints a warning L</Input's
+type cannot be serialized to JSON> and causes the entire return value
+to be the undefined value. [% see('type_handler') %].
 
 =head1 METHODS
 
@@ -343,6 +368,38 @@ If this is called with a true value, errors in the input are upgraded
 from warnings to fatal errors.
 
 [% example('fatal-errors') %]
+
+[% since('0.10') %]
+
+=head2 strict
+
+    $jc->strict (1);
+
+This switches on rejection of ambiguous inputs, which means
+
+=over
+
+=item * all non-data types, including objects,
+
+=item * strings containing non-ASCII bytes (bytes with values of from 128 to 255) which are not marked as C<utf8> (character strings),
+
+=item * non-finite floating point numbers (NaN or infinite values), and
+
+=item * scalar references.
+
+=back
+
+Calling L</run> with such inputs results in a return value of C<undef>
+(the undefined value) and a warning being printed. You can override
+the behaviour for objects with L</obj>, L</obj_handler>, for non-data
+types and scalar references with L</type_handler>, and for non-finite
+numbers with L</non_finite_handler>.
+
+The rejection of non-ASCII bytes in non-C<utf8> strings cannot be
+overridden, so users need to ensure that all input is either
+ASCII-only or character string-only (C<utf8>).
+
+[% since('0.20') %]
 
 =head2 Methods for formatting the output
 
@@ -598,20 +655,6 @@ buffer overflows within the module.
 
 [% since('0.07') %]
 
-=head3 strict
-
-    $jc->strict (1);
-
-This switches on the behaviours of L</create_json_strict>.  This means
-that all non-data types including object types, scalar references,
-non-ASCII bytes within non-character strings, and non-finite floating
-point numbers in the input cause the serialization to fail unless you
-explicitly set handlers for these types with L</obj>, L</obj_handler>,
-L</type_handler>, and L</non_finite_handler>. The rejection of
-non-ASCII bytes in non-C<utf8> strings cannot be overridden, so users
-need to ensure that all input is either ASCII-only or character
-string-only (C<utf8>).
-
 =head3 type_handler
 
     $jc->type_handler (sub {return 'null'});
@@ -630,6 +673,11 @@ than print an error, the above example will do it.
 The following example shows a few possibilities for handling types:
 
 [% example('type-handler') %]
+
+If the L</strict> option is chosen, this method is also passed scalar
+references.
+
+[% example('type-handler-scalar') %]
 
 [% since('0.10') %]
 
@@ -672,9 +720,10 @@ L<JSON::Parse>, so that module must be installed, otherwise the call
 to C<validate> will fail. This also validates that the return value
 contains only valid UTF-8.
 
-If JSON::Parse is installed, and the JSON fails to validate, this will
-produce a warning containing the string and the error produced by
-C<assert_valid_json>, and the return value will be undefined.
+If JSON::Parse is installed, and the JSON fails to validate, a warning
+will be produced containing the invalid JSON string and the error
+produced by C<assert_valid_json>, and the return value will be
+undefined.
 
 [% since('0.07') %]
 
@@ -805,7 +854,8 @@ All diagnostics are warnings by default. [% see('fatal_errors') %].
 =item Input's type cannot be serialized to JSON
 
 (Warning) A reference type such as a code reference, regexp, or glob
-was found in the user's input. See L</type_handler>.
+was found in the user's input. For a discussion, see L</Code, regexes,
+and other references>. For how to overcome this, see L</type_handler>.
 
 =item Invalid UTF-8
 
@@ -832,9 +882,18 @@ L</create_json_strict> or L</strict>.
 This diagnostic was added in version 0.20 of the module together with
 L</create_json_strict> and the L</strict> method.
 
+=item Non-finite number in input
+
+(Warning) A number which cannot be represented as a floating point
+number was found in the input. See L</Floating point numbers>.
+
+This diagnostic was added in version 0.20 of the module together with
+L</create_json_strict> and the L</strict> method.
+
 =item Object cannot be serialized to JSON
 
-(Warning) An object in the input could not be serialized to JSON.
+(Warning) An object in the input could not be serialized to JSON. See
+L</Objects> for a discussion.
 
 This diagnostic was added in version 0.20 of the module together with
 L</create_json_strict> and the L</strict> method.
@@ -854,7 +913,9 @@ until the module is demonstrably producing correct outputs.
 
 However, due to user interest, there is a benchmarking script in
 F<bench/bench.pl> which compares the performance of the module with
-L<JSON::XS> and L<Cpanel::JSON::XS>. Outputs look like this:
+L<JSON::XS> and L<Cpanel::JSON::XS>. Outputs look like this, where the
+"improve" column is the improvement in speed of the fastest module
+compared to the slowest:
 
 [% INCLUDE "/home/ben/projects/json-create/bench/bench.output" | indent (4) %]
 
@@ -900,6 +961,8 @@ L</set_fformat> was added in version 0.07.
 
 L</validate> was added in version 0.07.
 
+L</fatal_errors> was added in version 0.10.
+
 L</replace_bad_utf8> was added in version 0.12.
 
 L</obj_handler> was added in version 0.13. This version also added
@@ -912,6 +975,9 @@ L</downgrade_utf8> was added in version 0.18.
 
 The L</Invalid UTF-8 from user routine> diagnostic was added in
 version 0.19.
+
+The L</create_json_strict> function and L</strict> methods and
+associated diagnostics were added in version 0.20.
 
 =head1 SEE ALSO
 
@@ -937,6 +1003,11 @@ of JSON modules on CPAN (under "SEE ALSO").
 =item L<JSON::Create::PP>
 
 This is a backup module for JSON::Create in pure Perl.
+
+=item L<Hazy::Cosmic::Jive>
+
+This module contains the in-development floating point handling for
+JSON::Create.
 
 =back
 

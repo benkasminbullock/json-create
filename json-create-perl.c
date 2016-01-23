@@ -613,11 +613,13 @@ json_create_add_string (json_create_t * jc, SV * input)
 	   Unicode. */
 	jc->unicode = 1;
     }
+#if 0
     else if (jc->strict) {
 	/* Backtrace fall through, remember to check the caller's line. */
 	return json_create_add_ascii_key_len (jc, (unsigned char *) istring,
 					      (STRLEN) ilength);
     }
+#endif
     /* Backtrace fall through, remember to check the caller's line. */
     return json_create_add_key_len (jc, (unsigned char *) istring,
 				    (STRLEN) ilength);
@@ -1029,9 +1031,7 @@ json_create_handle_unknown_type (json_create_t * jc, SV * r)
 
 #define STRICT_NO_SCALAR						\
     if (jc->strict) {							\
-	json_create_user_message (jc, json_create_scalar_reference,	\
-				  "Scalar reference rejected");		\
-	return json_create_scalar_reference;				\
+	goto handle_type;						\
     }
 
 
@@ -1088,6 +1088,7 @@ json_create_handle_ref (json_create_t * jc, SV * input)
 	break;
 
     default:
+    handle_type:
 	CALL (json_create_handle_unknown_type (jc, r));
     }
     return json_create_ok;

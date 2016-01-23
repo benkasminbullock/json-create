@@ -15,13 +15,13 @@ my $warning;
 local $SIG{__WARN__} = sub {$warning = "@_"};
 my $in = \"monkey";
 is (create_json_strict ($in), undef, "undef value on scalar reference");
-like ($warning, qr/scalar reference/i, "warning on scalar reference");
+like ($warning, qr/Input's type cannot be serialized to JSON/i, "warning on scalar reference");
 is (create_json ($in), '"monkey"', "dereference on scalar reference");
 $warning = undef;
 my $number = 22;
 my $innumber = \$number;
 is (create_json_strict ($innumber), undef, "undef on scalar reference");
-like ($warning, qr/scalar reference/i, "warning on scalar reference");
+like ($warning, qr/Input's type cannot be serialized to JSON/i, "warning on scalar reference");
 is (create_json ($innumber), '22', "dereference on scalar reference");
 }
 done_testing ();
