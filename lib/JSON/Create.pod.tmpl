@@ -405,7 +405,10 @@ ASCII-only or character string-only (C<utf8>).
 
 These methods work on the object created with L</new> to format the
 output JSON in a different way from the default when operating
-L</run>. These methods do not affect the behaviour of L</create_json>.
+L</run>. 
+
+These methods do not affect the behaviour of L</create_json> or
+L</create_json_strict>.
 
 =head3 bool
 
@@ -729,8 +732,12 @@ undefined.
 
 =head1 EXPORTS
 
-The module exports nothing except by request. One function,
-L</create_json>, is exported on request.
+The module exports nothing except by request. Two functions,
+L</create_json> and L</create_json_strict>, are exported on
+request. There is also an export tag C<all> if you require both
+functions:
+
+    use JSON::Create ':all';
 
 =head1 INSTALLATION
 
