@@ -126,7 +126,7 @@ use utf8;
 
     my $out2 = $jc->run ($in);
     is ($out2, '"\u8D64\u30D6\u00F6\uFF21\u2182\u03EA"',
-	"Upper case hex unicode");
+        "Upper case hex unicode");
 };
 
 #TODO: {
@@ -154,7 +154,7 @@ use utf8;
     my $combined = "\x{10437}\x{24b62}\x{1D11E}\x{10437}x\x{24b62}y\x{1D11E}z";
     my $out_combined = $jc->run ($combined);
     is ($out_combined, '"\ud801\udc37\ud852\udf62\ud834\udd1e\ud801\udc37x\ud852\udf62y\ud834\udd1ez"',
-	"combination of things");
+        "combination of things");
     $jc->unicode_escape_all (0);
     my $out_combined_noesc = $jc->run ($combined);
     is ($out_combined_noesc, '"'.$combined.'"', "Long UTF-8 processed OK");
@@ -167,13 +167,13 @@ use utf8;
     my $bad_utf8 = "\x{99}\x{ff}";
     $jc->fatal_errors (1);
     eval {
-	$jc->run ($bad_utf8);
+        $jc->run ($bad_utf8);
     };
     ok ($@, "Got error with bad UTF-8");
     $jc->replace_bad_utf8 (1);
     my $outreplaced;
     eval {
-	$outreplaced = $jc->run ($bad_utf8);
+        $outreplaced = $jc->run ($bad_utf8);
     };
     ok (! $@, "No error with bad UTF-8 and replacement");
     is ($outreplaced, "\"\x{fffd}\x{fffd}\"");

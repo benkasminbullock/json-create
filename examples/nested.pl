@@ -7,9 +7,9 @@ my $nested = {
     cats => [qw/mocha dusty milky/],
     dogs => [qw/Tico Rocky Pinky/],
     fruit => {
-	thai => 'pineapple',
-	japan => 'persimmon',
-	australia => 'orange',
+        thai => 'pineapple',
+        japan => 'persimmon',
+        australia => 'orange',
     },
 };
 print create_json ($nested);

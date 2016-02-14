@@ -47,53 +47,53 @@ my $nan = -sin(9**9**9);
 
 SKIP: {
     if (! $nan || ! $inf || ! $neginf) {
-	skip 'Could not get nan or inf or neginf', 3*(
-	    1   # tests with create_json
-	    +2  # tests with create_json_strict
-	    +2  # tests with object.
-	);
+        skip 'Could not get nan or inf or neginf', 3*(
+            1   # tests with create_json
+            +2  # tests with create_json_strict
+            +2  # tests with object.
+        );
     }
 
     my $bread = {
-	#    'curry' => NaN,
-	'curry' => $nan,
+        #    'curry' => NaN,
+        'curry' => $nan,
     };
 
     my $rice = {
-	#    'rice' => POS_INF,
-	'rice' => $inf,
+        #    'rice' => POS_INF,
+        'rice' => $inf,
     };
 
     my $lice = {
-	#    'lice' => NEG_INF,
-	'lice' => $neginf,
+        #    'lice' => NEG_INF,
+        'lice' => $neginf,
     };
     for my $thing ($bread, $rice, $lice) {
 
-	# tests with create_json
+        # tests with create_json
 
-	my $nanbread = create_json ($thing);
-#	note ($nanbread);
-	ok (valid_json ($nanbread), "non-finite is ok");
+        my $nanbread = create_json ($thing);
+        # note ($nanbread);
+        ok (valid_json ($nanbread), "non-finite is ok");
 
-	# tests with create_json_strict
+        # tests with create_json_strict
 
     {
-	my $warning;
-	local $SIG{__WARN__} = sub {$warning = "@_"};
-	is (create_json_strict ($thing), undef, "got undefined value with strict");
-	like ($warning, qr/non-finite number/i, "got warning with strict option");
+        my $warning;
+        local $SIG{__WARN__} = sub {$warning = "@_"};
+        is (create_json_strict ($thing), undef, "got undefined value with strict");
+        like ($warning, qr/non-finite number/i, "got warning with strict option");
     }
     }
     # tests with object.
     my $jcnfh = JSON::Create->new ();
     $jcnfh->non_finite_handler(sub {
-	return 'null';
+        return 'null';
     });
     for my $thing ($bread, $rice, $lice) {
-	my $jcout = $jcnfh->run ($thing);
-	ok (valid_json ($jcout), "output using non-finite handler OK");
-	like ($jcout, qr/{"(?:curry|rice|lice)":null\}/, "get null in output");
+        my $jcout = $jcnfh->run ($thing);
+        ok (valid_json ($jcout), "output using non-finite handler OK");
+        like ($jcout, qr/{"(?:curry|rice|lice)":null\}/, "get null in output");
     }
 };
 
@@ -105,9 +105,9 @@ for my $func (\&create_json, \&create_json_strict) {
     is (ref $rt, 'ARRAY', "got array");
     cmp_ok (scalar (@$rt), '==', scalar (@$floats), "same number of members");
     for my $i (0..$#$rt) {
-	my $diff = abs (($rt->[$i] - $floats->[$i])/($rt->[$i] + $floats->[$i]));
-	cmp_ok ($diff, '<', 1/100_000.0, "value $i, $floats->[$i]");
-	#    note ("$rt->[$i]  $floats->[$i] $diff");
+        my $diff = abs (($rt->[$i] - $floats->[$i])/($rt->[$i] + $floats->[$i]));
+        cmp_ok ($diff, '<', 1/100_000.0, "value $i, $floats->[$i]");
+        # note ("$rt->[$i]  $floats->[$i] $diff");
     }
 }
 done_testing ();

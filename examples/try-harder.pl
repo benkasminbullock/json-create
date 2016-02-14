@@ -12,15 +12,15 @@ sub try_harder
     my ($obj) = @_;
     my $type = ref $obj;
     if ($obj->can ('TO_JSON')) {
-	print "Jsonifying $type with 'TO_JSON'.\n";
-	return create_json ($obj->TO_JSON ());
+        print "Jsonifying $type with 'TO_JSON'.\n";
+        return create_json ($obj->TO_JSON ());
     }
     elsif ($obj->can ('to_string')) {
-	print "Stringifying $type with 'to_string'.\n";
-	return create_json ($obj->to_string ());
+        print "Stringifying $type with 'to_string'.\n";
+        return create_json ($obj->to_string ());
     }
     else {
-	return create_json ($obj);
+        return create_json ($obj);
     }
 }
 

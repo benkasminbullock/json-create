@@ -21,10 +21,10 @@ my $monkeys = {
 my $obj_handler = sub {
     my ($obj) = @_;
     if (ref ($obj) =~ /bool/i) {
-	return $$obj ? 'true' : 'false';
+        return $$obj ? 'true' : 'false';
     }
     else {
-	return 'null';
+        return 'null';
     }
 };
 my $jc = JSON::Create->new ();

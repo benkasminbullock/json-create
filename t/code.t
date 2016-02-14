@@ -39,10 +39,10 @@ note ($warning);
     $warning = undef;
     my $gotcode;
     sub coderef {
-	my ($code) = @_;
-	print "# Here we go bo.\n";
-	$gotcode = $code;
-	return 'null';
+        my ($code) = @_;
+        print "# Here we go bo.\n";
+        $gotcode = $code;
+        return 'null';
     };
     my $jc = JSON::Create->new ();
     $jc->type_handler (\& coderef);

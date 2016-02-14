@@ -55,37 +55,37 @@ for my $func (\&create_json, \&create_json_strict) {
     # Hash to numbers.
 
     my $h2n = {
-	a => 1,
-	b => 2,
-	c => 4,
-	d => 8,
-	e => 16,
-	f => 32,
-	g => 64,
-	h => 128,
-	i => 256,
-	j => 512,
-	k => 1024,
-	l => 2048,
-	m => 4096,
-	n => 8192,
-	o => 16384,
-	p => 32768,
-	q => 65536,
-	r => 131_072,
-	s => 262_144,
-	t => 524_288,
-	u => 1_048_576,
-	v => 2_097_152,
-	w => 4_194_304,
-	x => 8_388_608,
-	y => 16_777_216,
-	z => 33_554_432,
-	A => 67_108_864,
-	B => 134_217_728,
-	C => 268_435_456,
-	D => 536_870_912,
-	E => 1_073_741_824,
+        a => 1,
+        b => 2,
+        c => 4,
+        d => 8,
+        e => 16,
+        f => 32,
+        g => 64,
+        h => 128,
+        i => 256,
+        j => 512,
+        k => 1024,
+        l => 2048,
+        m => 4096,
+        n => 8192,
+        o => 16384,
+        p => 32768,
+        q => 65536,
+        r => 131_072,
+        s => 262_144,
+        t => 524_288,
+        u => 1_048_576,
+        v => 2_097_152,
+        w => 4_194_304,
+        x => 8_388_608,
+        y => 16_777_216,
+        z => 33_554_432,
+        A => 67_108_864,
+        B => 134_217_728,
+        C => 268_435_456,
+        D => 536_870_912,
+        E => 1_073_741_824,
     };
 
     run ($h2n, \&alnums, $func);
@@ -108,30 +108,30 @@ sub run
 {
     my ($input, $test, $func, $name) = @_;
     if (! defined $name) {
-	$name = '';
+        $name = '';
     }
     else {
-	$name = " - $name";
+        $name = " - $name";
     }
     my $output;
     eval {
-	$output = &{$func} ($input);
+        $output = &{$func} ($input);
     };
     #    print "$output\n";
     ok (! $@, "no errors on input $name");
     ok (valid_json ($output), "output is valid JSON $name");
     if (ref $test eq 'CODE') {
-	&{$test} ($input, $output);
+        &{$test} ($input, $output);
     }
     elsif (ref $test eq 'Regexp') {
-	like ($output, $test, "input looks as expected $name");
+        like ($output, $test, "input looks as expected $name");
     }
     elsif (! defined $test) {
-	# skip this test
+        # skip this test
     }
     else {
-	# Assume string
-	is ($output, $test, "output is what was expected $name");
+        # Assume string
+        is ($output, $test, "output is what was expected $name");
     }
     return;
 }
@@ -142,7 +142,7 @@ sub alnums
     my $stuff = parse_json ($output);
     my $num = 1;
     for my $letter ('a'..'z') {
-	ok ($stuff->{$letter} == $num, "$letter is $num");
-	$num *= 2;
+        ok ($stuff->{$letter} == $num, "$letter is $num");
+        $num *= 2;
     }
 }

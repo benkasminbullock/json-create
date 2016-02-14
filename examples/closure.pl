@@ -12,9 +12,9 @@ my $jc = JSON::Create->new ();
 my ($arg1, $arg2);
 $jc->obj (
     'My::Cool::Object' => sub {
-	my ($obj) = @_;
-	my ($value1, $value2) = My::Cool::Object::serialize ($obj, $arg1, $arg2);
-	return $value2;
+        my ($obj) = @_;
+        my ($value1, $value2) = My::Cool::Object::serialize ($obj, $arg1, $arg2);
+        return $value2;
     },
 );
 print $jc->run ({cool => $object});

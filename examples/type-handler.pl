@@ -15,16 +15,16 @@ $jc->validate (1);
 # Try this one weird old trick to convert your Perl type.
 $jc->type_handler (
     sub {
-	my ($thing) = @_;
-	my $value;
-	my $type = ref ($thing);
-	if ($type eq 'CODE') {
-	    $value = &$thing;
-	}
-	else {
-	    $value = "$thing";
-	}
-	return create_json ({ type => $type, value => $value, });
+        my ($thing) = @_;
+        my $value;
+        my $type = ref ($thing);
+        if ($type eq 'CODE') {
+            $value = &$thing;
+        }
+        else {
+            $value = "$thing";
+        }
+        return create_json ({ type => $type, value => $value, });
     }
 );
 print $jc->run (\%crazyhash);
