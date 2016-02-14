@@ -120,8 +120,8 @@ for my $module (sort keys %tst) {
     $min{$module} = $min;
 
     for (1..$times) {
-	my $t = bench ($tst{$module}[0], $count);
-	$min{$module} = $t if $t < $min{$module};
+        my $t = bench ($tst{$module}[0], $count);
+        $min{$module} = $t if $t < $min{$module};
     }
 }
 

@@ -15,27 +15,27 @@ my $jsonin = '{"hocus":true,"pocus":false}';
 
 SKIP: {
     eval {
-	require Mojo::JSON;
+        require Mojo::JSON;
 
-	# It seems like "require Mojo::JSON" can succeed but then
-	# "Mojo::JSON::decode_json" can fail:
+        # It seems like "require Mojo::JSON" can succeed but then
+        # "Mojo::JSON::decode_json" can fail:
 
-	# http://www.cpantesters.org/cpan/report/aecc9dff-6bf5-1014-9443-909d2cb3cc3d
+        # http://www.cpantesters.org/cpan/report/aecc9dff-6bf5-1014-9443-909d2cb3cc3d
 
-	# Old versions don't have "decode_json" at all:
+        # Old versions don't have "decode_json" at all:
 
-	# https://metacpan.org/pod/release/SRI/Mojolicious-4.27/lib/Mojo/JSON.pm
+        # https://metacpan.org/pod/release/SRI/Mojolicious-4.27/lib/Mojo/JSON.pm
 
-	Mojo::JSON::decode_json ('[true]');
+        Mojo::JSON::decode_json ('[true]');
     };
     if ($@) {
-	skip "Mojo::JSON is not installed.\n", 4;
+        skip "Mojo::JSON is not installed.\n", 4;
     }
     my $sri = JSON::Create->new ();
     $sri->bool ('JSON::PP::Boolean', 'Mojo::JSON::_Bool');
     my $mojo = {
-	'mojolicio' => Mojo::JSON::true (),
-	'us' => Mojo::JSON::false (),
+        'mojolicio' => Mojo::JSON::true (),
+        'us' => Mojo::JSON::false (),
     };
     my $austinpowers = $sri->run ($mojo);
     like ($austinpowers, qr/"mojolicio":true/, "Mojo::JSON::true");

@@ -46,19 +46,19 @@ like ($outnoobj, qr/"zilog":\{\}/);
 
 $jc->obj (
     'Zilog::Z80' => sub {
-	my ($obj) = @_;
-	#print "$obj\n";
-	if ($obj->{jive}) {
-	    return "\"$obj->{jive}\"";
-	}
-	else {
-	    return '"passive-aggressive-programmer"';
-	}
+        my ($obj) = @_;
+        #print "$obj\n";
+        if ($obj->{jive}) {
+            return "\"$obj->{jive}\"";
+        }
+        else {
+            return '"passive-aggressive-programmer"';
+        }
     },
     'JSON::Free' => sub {
-	my ($self) = @_;
-	# The nature of monkey was ... irrepressible
-	return '"A knife cannot cut itself"',
+        my ($self) = @_;
+        # The nature of monkey was ... irrepressible
+        return '"A knife cannot cut itself"',
     },
 );
 my $outobj = $jc->run ($thing);
@@ -97,14 +97,14 @@ my $newjc = JSON::Create->new ();
 $newjc->bool ('Zilog::Z80::Buggles');
 $newjc->obj (
     'Zilog::Z80' => sub {
-	my ($obj) = @_;
-	#	    print "$obj\n";
-	if ($obj->{jive}) {
-	    return "\"$obj->{jive}\"";
-	}
-	else {
-	    return '"passive-aggressive-programmer"';
-	}
+        my ($obj) = @_;
+        #            print "$obj\n";
+        if ($obj->{jive}) {
+            return "\"$obj->{jive}\"";
+        }
+        else {
+            return '"passive-aggressive-programmer"';
+        }
     },
 );
 my $outbool2 = $newjc->run ($monkey);

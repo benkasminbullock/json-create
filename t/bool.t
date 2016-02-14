@@ -45,11 +45,11 @@ like ($stuff, qr/"zilog":false\b/, "Self-created false");
 SKIP: {
     # https://metacpan.org/source/GRIAN/Storable-AMF-1.08/t/67-boolean-real.t#L1
     eval {
-	require boolean;
-	boolean->import(":all");
+        require boolean;
+        boolean->import(":all");
     };
     if ($@) {
-	skip "boolean is not installed.\n", 2;
+        skip "boolean is not installed.\n", 2;
     }
     my $ingy = JSON::Create->new ();
     $ingy->bool ('boolean');
@@ -59,8 +59,8 @@ SKIP: {
     # https://metacpan.org/source/GRIAN/Storable-AMF-1.08/t/67-boolean-real.t#L39
 
     my $dotnet = {
-	'Peter' => boolean::false(),
-	'Falk' => boolean::true(),
+        'Peter' => boolean::false(),
+        'Falk' => boolean::true(),
     };
     my $ingyout = $ingy->run ($dotnet);
     like ($ingyout, qr/"Peter":false\b/, "boolean false");
@@ -73,16 +73,16 @@ my $jsonin = '{"hocus":true,"pocus":false}';
 
 SKIP: {
     eval {
-	require JSON::Tiny;
+        require JSON::Tiny;
     };
     if ($@) {
-	skip "JSON::Tiny is not installed.\n", 4;
+        skip "JSON::Tiny is not installed.\n", 4;
     }
     my $davido = JSON::Create->new ();
     $davido->bool ('JSON::Tiny::_Bool');
     my $minij = {
-	'salt' => JSON::Tiny::true(),
-	'lake' => JSON::Tiny::false(),
+        'salt' => JSON::Tiny::true(),
+        'lake' => JSON::Tiny::false(),
     };
     my $saltlake = $davido->run ($minij);
     like ($saltlake, qr/"salt":true/, "JSON::Tiny true");
@@ -97,16 +97,16 @@ SKIP: {
     # Prints warnings about $JSON::PP::true/false so switch off.
     no warnings;
     eval {
-	require JSON::PP;
+        require JSON::PP;
     };
     if ($@) {
-	skip "JSON::PP is not installed.\n", 4;
+        skip "JSON::PP is not installed.\n", 4;
     }
     my $makamaka = JSON::Create->new ();
     $makamaka->bool ('JSON::PP::Boolean');
     my $pp = {
-	'don' => $JSON::PP::true,
-	'zoko' => $JSON::PP::false,
+        'don' => $JSON::PP::true,
+        'zoko' => $JSON::PP::false,
     };
     my $ppout = $makamaka->run ($pp);
     like ($ppout, qr/"don":true/, "JSON::PP true");
@@ -119,11 +119,11 @@ SKIP: {
 
 SKIP: {
     eval {
-	require Types::Serialiser;
-#	Types::Serialiser->import (qw/$true $false/);
+        require Types::Serialiser;
+#        Types::Serialiser->import (qw/$true $false/);
     };
     if ($@) {
-	skip "Types::Serialiser is not installed.\n", 2;
+        skip "Types::Serialiser is not installed.\n", 2;
     }
     my $schmorp = JSON::Create->new ();
     # The ref of a Types::Serialiser::true is JSON::PP::Boolean.
@@ -134,8 +134,8 @@ SKIP: {
 
     $schmorp->bool ('JSON::PP::Boolean');
     my $lehmann = {
-	'any' => Types::Serialiser::true (),
-	'event' => Types::Serialiser::false (),
+        'any' => Types::Serialiser::true (),
+        'event' => Types::Serialiser::false (),
     };
     my $schplog = $schmorp->run ($lehmann);
     like ($schplog, qr/"any":true/, "Types::Serialiser::true");

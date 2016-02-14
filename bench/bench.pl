@@ -115,7 +115,7 @@ my %unihash = (
     'え' => '絵',
     'お' => '尾',
     'ば' => [
-	qw/場 馬 羽 葉 刃/
+        qw/場 馬 羽 葉 刃/
     ],
 );
 
@@ -172,21 +172,21 @@ sub cmpthese
     push @results, ["Module", "1/min", "min", "improve"];
     $worst = 0;
     for my $module (sort keys %these) {
-	$min{$module} = $min;
-	for (1..$times) {
-	    my $t = bench ($these{$module}, $stuff);
-	    if ($t < $min{$module}) {
-		$min{$module} = $t;
-	    }
-	}
-	if ($min{$module} > $worst) {
-	    $worst = $min{$module};
-	}
+        $min{$module} = $min;
+        for (1..$times) {
+            my $t = bench ($these{$module}, $stuff);
+            if ($t < $min{$module}) {
+                $min{$module} = $t;
+            }
+        }
+        if ($min{$module} > $worst) {
+            $worst = $min{$module};
+        }
     }
 
     for my $module (sort keys %these) {
-	my @nums = map {sprintf ("%g", $_)} $count/$min{$module}, $min{$module}, $worst / $min{$module};
-	push @results, [$module, @nums];
+        my @nums = map {sprintf ("%g", $_)} $count/$min{$module}, $min{$module}, $worst / $min{$module};
+        push @results, [$module, @nums];
     }
     print generate_table (rows => \@results, header_row => 1);
     print "\n";
@@ -198,7 +198,7 @@ sub bench
 
     my $cent = eval "sub { my \$t = Time::HiRes::time; " . (join ";", ($code) x $count) . "; Time::HiRes::time - \$t }";
     if ($@) {
-	print "$@\n";
+        print "$@\n";
     }
     $cent->();
     my $t = $cent->();

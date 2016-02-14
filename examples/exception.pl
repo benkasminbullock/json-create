@@ -7,7 +7,7 @@ package main;
 my $jc = JSON::Create->new ();
 $jc->obj (
     'Funky::Monkey::Baby' => sub {
-	die "There is no such thing as a funky monkey baby";
+        die "There is no such thing as a funky monkey baby";
     },
 );
 eval {

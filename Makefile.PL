@@ -38,30 +38,30 @@ my %WriteMakefileArgs = (
     AUTHOR => 'Ben Bullock <bkb@cpan.org>',
     LICENSE => 'perl',
     PREREQ_PM => {
-	# Used in the PP version
-	'B' => 0,
-	# Used in the PP version
-	'Carp' => 0,
-	# Used in the PP version
-	'Scalar::Util' => 0,
-	# Used in the PP version
-	'POSIX' => 0,
+        # Used in the PP version
+        'B' => 0,
+        # Used in the PP version
+        'Carp' => 0,
+        # Used in the PP version
+        'Scalar::Util' => 0,
+        # Used in the PP version
+        'POSIX' => 0,
     },
     TEST_REQUIRES => $tr,
     META_MERGE => {
-	'meta-spec' => {
-	    version => 2,
-	},
+        'meta-spec' => {
+            version => 2,
+        },
         resources => {
             repository => {
-	    	type => 'git',
-	    	url => "git://$github.git",
-	    	web => $repo,
-	    },
+                type => 'git',
+                url => "git://$github.git",
+                web => $repo,
+            },
             bugtracker => {
-	    	web => "$repo/issues",
-	    },
-#	    homepage => 'http://',
+                web => "$repo/issues",
+            },
+            # homepage => 'http://',
         },
     },
     MIN_PERL_VERSION => '5.006001',
@@ -80,5 +80,5 @@ unless ( eval { ExtUtils::MakeMaker->VERSION(6.63_03) } ) {
  
 WriteMakefile(
     %WriteMakefileArgs,
-#    OPTIMIZE => '-g -Wall -O2 -S',
+    # OPTIMIZE => '-g -Wall -O2 -S',
 );

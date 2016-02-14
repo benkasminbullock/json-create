@@ -19,24 +19,24 @@ my $fout = $jc->run (\@array);
 $jc->set_fformat ('%e');
 my $eout = $jc->run (\@array);
 my $e = qr/
-	      (?:
-		  [1-9]
-		  # It may or may not have a ".0" part.
-		  (?:\.[0-9]*)?
-		  e
-		  (?:\+|-|)
-		  [0-9]+
-	      )
-	  /x;
+              (?:
+                  [1-9]
+                  # It may or may not have a ".0" part.
+                  (?:\.[0-9]*)?
+                  e
+                  (?:\+|-|)
+                  [0-9]+
+              )
+          /x;
 
 my $eout_re = qr/
-		    ^\[
-		    (?:
-			$e,
-		    )*
-		    $e
-		    \]$
-		/x;
+                    ^\[
+                    (?:
+                        $e,
+                    )*
+                    $e
+                    \]$
+                /x;
 
 like ($eout, $eout_re);
 #note $eout;
