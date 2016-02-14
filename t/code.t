@@ -33,8 +33,7 @@ ok ($warning, "Got a warning");
 like ($warning, qr/cannot be serialized/i, "Warning is the right kind of thing");
 note ($warning);
 
-#TODO: {
-#    local $TODO = 'Implement code reference callback';
+# Test the code reference callback
 {
     $warning = undef;
     my $gotcode;
