@@ -14,8 +14,6 @@ use JSON::Create;
 
 # JCUT = Json Create Undef Test
 
-#TODO: {
-#    local $TODO='undef halts execution';
 {
     my $jcutwarning;
     my $jcutcalled;

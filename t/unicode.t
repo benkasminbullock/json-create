@@ -73,8 +73,7 @@ use utf8;
 # the code when the Perl flag is switched off, otherwise we may
 # produce invalid JSON.
 
-#TODO: {
-#    local $TODO = 'implement default escaping of U+2028 and U+2029';
+# Test the escaping of U+2028 and U+2029
 {
     my $jc = JSON::Create->new ();
 
@@ -109,8 +108,7 @@ use utf8;
     is ($out2029b, '"\u2029"', "switch on JS protection");
 };
 
-#TODO: {
-#    local $TODO = 'implement unicode_escape_all';
+# Test the unicode_escape_all
 {
     my $jc = JSON::Create->new ();
     $jc->unicode_escape_all (1);
@@ -129,8 +127,7 @@ use utf8;
 	"Upper case hex unicode");
 };
 
-#TODO: {
-#    local $TODO = 'correctly generate surrogate pairs';
+# Test the generation of surrogate pairs
 {
     my $jc = JSON::Create->new ();
     $jc->unicode_escape_all (1);
@@ -160,8 +157,7 @@ use utf8;
     is ($out_combined_noesc, '"'.$combined.'"', "Long UTF-8 processed OK");
 };
 
-#TODO: {
-#    local $TODO = 'correctly generate escapes';
+# Test the generation of escapes
 {
     my $jc = JSON::Create->new ();
     my $bad_utf8 = "\x{99}\x{ff}";
