@@ -15,8 +15,8 @@ for my $func (\&create_json, \&create_json_strict) {
     my $hashhash = {a => {b => 'c'}, d => {e => 'f'}};
     my $json_hashhash = &{$func} ($hashhash);
     ok (valid_json ($json_hashhash), "json nested hash valid");
-    like ($json_hashhash, qr/"a":{"b":"c"}/, "json nested hash OK part 1");
-    like ($json_hashhash, qr/"d":{"e":"f"}/, "json nested hash OK part 2");
+    like ($json_hashhash, qr/"a":\{"b":"c"\}/, "json nested hash OK part 1");
+    like ($json_hashhash, qr/"d":\{"e":"f"\}/, "json nested hash OK part 2");
 
     # Arrays
 
