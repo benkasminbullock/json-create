@@ -1,3 +1,7 @@
+0.20_01 2016-06-24
+
+* Tests changed for Perl 5.25 regex changes.
+
 0.20 2016-01-23
 * Add a "strict" mode
 
