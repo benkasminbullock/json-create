@@ -354,7 +354,7 @@ sub create_json_recursively
     }
     else {
 	my $error;
-	if (looks_like_number ($input)) {
+	if (looks_like_number ($input) && $input !~ /^0/) {
 	    $error = $jc->handle_number ($input);
 	}
 	else {

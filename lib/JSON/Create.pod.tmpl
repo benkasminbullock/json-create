@@ -8,6 +8,9 @@ This method was added in version [% version %] of the module.
 [% MACRO fsince(version) BLOCK -%]
 This function was added in version [% version %] of the module.
 [%- END %]
+[% MACRO bsince(version) BLOCK -%]
+This behaviour was added in version [% version %] of the module.
+[%- END %]
 [% MACRO handler_undef BLOCK -%]
 
 If your handler returns the undefined value, L</run> prints a warning
@@ -234,6 +237,17 @@ Integers are printed in the obvious way. Note that what you input to
 Perl as an integer, Perl may interpret to be a floating point number,
 if it has a very large absolute value, in which case this module will
 print it out like a floating point number.
+
+If the contents of the scalar appear to be both an integer and a
+string to Perl (if it is a PVIV in the Perl XS terminology), it is
+printed using Perl's string representation (the PV rather than the IV
+is used). Usually no quotes are added, but if the string
+representation (the PV) starts with a zero, and is not a
+floating-point number, it is also printed with quotes, as in C<"01">,
+rather than being printed as C<1> or C<01> (an error in JSON). This
+works around an unusual case where strings consisting of numbers, such
+as Huffman codes (see L<Compress::Huffman>) are recognized as integers
+by Perl. [% bsince('0.22') %]
 
 =head3 Floating point numbers
 

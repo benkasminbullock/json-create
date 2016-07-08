@@ -926,7 +926,17 @@ json_create_add_stringified (json_create_t * jc, SV *r)
     /* Length of "r". */
     STRLEN rlen;
     s = SvPV (r, rlen);
-    /* This doesn't backtrace correctly, but the calling routine
+    /* If the stringified number has leading zeros, don't skip those,
+       but put the string in quotes. It can happen that something like
+       a Huffman code has leading zeros and should be treated as a
+       string, yet Perl also thinks it is a number. */
+     if (s[0] == '0' && rlen > 1 && isdigit (s[1])) {
+	 CALL (add_char (jc, '"'));
+	 CALL (add_str_len (jc, s, (unsigned int) rlen));
+	 CALL (add_char (jc, '"'));
+	 return json_create_ok;
+     } /**/
+     /* This doesn't backtrace correctly, but the calling routine
        should print out that it was calling "add_stringified", so as
        long as we're careful not to ignore the caller line, it
        shouldn't matter. */
@@ -982,6 +992,9 @@ json_create_add_object (json_create_t * jc, HV * input_hv)
 					   (STRLEN) keylen));
 	}
 	CALL (add_char (jc, ':'));
+#ifdef JCDEBUGTYPES
+	fprintf (stderr, "Creating value of hash.\n");
+#endif /* JCDEBUGTYPES */
 	CALL (json_create_recursively (jc, value));
     }
     CALL (add_char (jc, '}'));
@@ -1032,6 +1045,7 @@ json_create_handle_unknown_type (json_create_t * jc, SV * r)
 	goto handle_type;						\
     }
 
+//#define JCDEBUGTYPES
 
 static INLINE json_create_status_t
 json_create_handle_ref (json_create_t * jc, SV * input)
@@ -1040,27 +1054,39 @@ json_create_handle_ref (json_create_t * jc, SV * input)
     SV * r;
     r = SvRV (input);
     t = SvTYPE (r);
-#if 0
+#ifdef JCDEBUGTYPES
     fprintf (stderr, "%s:%d: type is %d\n", __FILE__, 
 	     __LINE__, t);
-#endif /* 0 */
+#endif /* JCDEBUGTYPES */
     switch (t) {
     case SVt_PVAV:
+#ifdef JCDEBUGTYPES
+	fprintf (stderr, "array\n");
+#endif /* JCDEBUGTYPES */
 	CALL (json_create_add_array (jc, (AV *) r));
 	break;
 
     case SVt_PVHV:
+#ifdef JCDEBUGTYPES
+	fprintf (stderr, "hash\n");
+#endif /* JCDEBUGTYPES */
 	CALL (json_create_add_object (jc, (HV *) r));
 	break;
 
     case SVt_NV:
     case SVt_PVNV:
+#ifdef JCDEBUGTYPES
+	fprintf (stderr, "NV/PVNV\n");
+#endif /* JCDEBUGTYPES */
 	STRICT_NO_SCALAR;
 	CALL (json_create_add_float (jc, r));
 	break;
 
     case SVt_IV:
     case SVt_PVIV:
+#ifdef JCDEBUGTYPES
+	fprintf (stderr, "IV/PVIV\n");
+#endif /* JCDEBUGTYPES */
 	STRICT_NO_SCALAR;
 	CALL (json_create_add_integer (jc, r));
 	break;
@@ -1221,6 +1247,10 @@ json_create_recursively (json_create_t * jc, SV * input)
 	return json_create_ok;
     }
     if (SvROK (input)) {
+#ifdef JCDEBUGTYPES
+	fprintf (stderr, "A reference.\n");
+#endif /* JCDEBUGTYPES */
+
 	/* We have a reference, so decide what to do with it. */
 	if (sv_isobject (input)) {
 	    if (jc->handlers || jc->obj_handler) {
@@ -1230,10 +1260,16 @@ json_create_recursively (json_create_t * jc, SV * input)
 		REJECT_OBJECT (sv_reftype (SvRV (input), 1));
 	    }
 	    else {
+#ifdef JCDEBUGTYPES
+		fprintf (stderr, "create handle eferences\n");
+#endif /* JCDEBUGTYPES */
 		CALL (json_create_handle_ref (jc, input));
 	    }
 	}
 	else {
+#ifdef JCDEBUGTYPES
+	    fprintf (stderr, "create handle eferences\n");
+#endif /* JCDEBUGTYPES */
 	    CALL (json_create_handle_ref (jc, input));
 	}
     }
@@ -1241,6 +1277,9 @@ json_create_recursively (json_create_t * jc, SV * input)
 	/* Not a reference, think about what to do. */
 	SV * r = input;
 	svtype t;
+#ifdef JCDEBUGTYPES
+	fprintf (stderr, "Not a reference.\n");
+#endif /* JCDEBUGTYPES */
 	t = SvTYPE (r);
 	switch (t) {
 
@@ -1250,22 +1289,31 @@ json_create_recursively (json_create_t * jc, SV * input)
 
 	case SVt_PVMG:
 	case SVt_PV:
+#ifdef JCDEBUGTYPES
+	    fprintf (stderr, "SVt_PV/PVMG %s\n", SvPV_nolen (r));
+#endif /* JCDEBUGTYPES */
 	    CALL (json_create_add_string (jc, r));
 	    break;
 
 	case SVt_IV:
-//	    fprintf (stderr, "SVt_IV %ld\n", SvIV (r));
+#ifdef JCDEBUGTYPES
+	    fprintf (stderr, "SVt_IV %ld\n", SvIV (r));
+#endif /* JCDEBUGTYPES */
 	    CALL (json_create_add_integer (jc, r));
 	    break;
 
 	case SVt_NV:
 //	    fprintf (stderr, "%lu %d %lu %lu\n", SvIOK (r), SvIOK_UV (r), SvNOK (r), SvNIOK (r));
-//	    fprintf (stderr, "SVt_NV %g\n", SvNV (r));
+#ifdef JCDEBUGTYPES
+	    fprintf (stderr, "SVt_NV %g\n", SvNV (r));
+#endif /* JCDEBUGTYPES */
 	    CALL (json_create_add_float (jc, r));
 	    break;
 
 	case SVt_PVNV:
-//	    fprintf (stderr, "SVt_PVNV %g\n", SvNV (r));
+#ifdef JCDEBUGTYPES
+	    fprintf (stderr, "SVt_PVNV %g\n", SvNV (r));
+#endif /* JCDEBUGTYPES */
 	    /* We need to handle non-finite numbers without using
 	       Perl's stringified forms, because we need to put quotes
 	       around them, whereas Perl will just print 'nan' the
@@ -1275,8 +1323,11 @@ json_create_recursively (json_create_t * jc, SV * input)
 	    break;
 
 	case SVt_PVIV:
-	    /* Experimentally, add these as stringified. This code
-	       path is untested. */
+	    /* Add numbers with a string version using the strings
+	       which Perl contains. */
+#ifdef JCDEBUGTYPES
+	    fprintf (stderr, "SVt_PV %s\n", SvPV_nolen (r));
+#endif /* JCDEBUGTYPES */
 	    CALL (json_create_add_stringified (jc, r));
 	    break;
 	    

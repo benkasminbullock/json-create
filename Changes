@@ -1,3 +1,6 @@
+0.21_01 2016-07-08
+* Handle strings with leading zeros which look like numbers.
+
 0.21 2016-06-28 06:59:06
 * Tests changed for Perl 5.25 regex changes.
 
