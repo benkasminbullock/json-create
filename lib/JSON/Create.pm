@@ -7,7 +7,7 @@ require Exporter;
 );
 use warnings;
 use strict;
-our $VERSION = '0.21_01';
+our $VERSION = '0.22';
 # Are we running as XS?
 our $noxs;
 $noxs = $ENV{JSONCreatePP};
