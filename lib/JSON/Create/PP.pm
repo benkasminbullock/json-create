@@ -40,7 +40,7 @@ impossible to get this information from Perl without XS.
 
 package JSON::Create::PP;
 use parent Exporter;
-our @EXPORT_OK = qw/create_json/;
+our @EXPORT_OK = qw/create_json json_escape/;
 our %EXPORT_TAGS = (all => \@EXPORT_OK);
 use warnings;
 use strict;
@@ -49,6 +49,7 @@ use Carp qw/croak carp confess cluck/;
 use Scalar::Util qw/looks_like_number blessed reftype/;
 use Unicode::UTF8 qw/decode_utf8 valid_utf8/;
 use B;
+our $VERSION = '0.22';
 
 # http://stackoverflow.com/questions/1185822/how-do-i-create-or-test-for-nan-or-infinity-in-perl#1185828
 
@@ -114,6 +115,19 @@ sub isbool
     return undef;
 }
 
+sub json_escape
+{
+    my ($input) = @_;
+    $input =~ s/("|\\)/\\$1/g;
+    $input =~ s/\x08/\\b/g;
+    $input =~ s/\f/\\f/g;
+    $input =~ s/\n/\\n/g;
+    $input =~ s/\r/\\r/g;
+    $input =~ s/\t/\\t/g;
+    $input =~ s/([\x00-\x1f])/sprintf ("\\u%04x", ord ($1))/ge;
+    return $input;
+}
+
 sub escape_all_unicode
 {
     my ($jc, $input) = @_;
@@ -145,13 +159,7 @@ sub stringify
 	    }
 	}
     }
-    $input =~ s/("|\\)/\\$1/g;
-    $input =~ s/\x08/\\b/g;
-    $input =~ s/\f/\\f/g;
-    $input =~ s/\n/\\n/g;
-    $input =~ s/\r/\\r/g;
-    $input =~ s/\t/\\t/g;
-    $input =~ s/([\x00-\x1f])/sprintf ("\\u%04x", ord ($1))/ge;
+    $input = json_escape ($input);
     if ($jc->{_escape_slash}) {
 	$input =~ s!/!\\/!g;
     }

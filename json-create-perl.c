@@ -316,8 +316,8 @@ static INLINE json_create_status_t
 add_u (json_create_t * jc, unsigned int u)
 {
     if (u > 0xffff) {
-	unsigned hi;
-	unsigned lo;
+	int hi;
+	int lo;
 	int status = unicode_to_surrogates (u, & hi, & lo);
 	if (status != UNICODE_OK) {
 	    if (JCEH) {

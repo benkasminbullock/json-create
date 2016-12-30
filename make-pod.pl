@@ -5,7 +5,6 @@ use Template;
 use FindBin '$Bin';
 use Perl::Build qw/get_version get_commit/;
 use Perl::Build::Pod ':all';
-use Deploy qw/do_system older/;
 use Getopt::Long;
 my $ok = GetOptions (
     'force' => \my $force,
@@ -48,14 +47,7 @@ my $tt = Template->new (
     STRICT => 1,
 );
 
-my @examples = <$Bin/examples/*.pl>;
-for my $example (@examples) {
-    my $output = $example;
-    $output =~ s/\.pl$/-out.txt/;
-    if (older ($output, $example) || $force) {
-	do_system ("perl -I$Bin/blib/lib -I$Bin/blib/arch $example > $output 2>&1", $verbose);
-    }
-}
+make_examples ("$Bin/examples", $verbose, $force);
 
 $tt->process ($input, \%vars, $output, binmode => 'utf8')
     or die '' . $tt->error ();
