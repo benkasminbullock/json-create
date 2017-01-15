@@ -1,4 +1,4 @@
-#!/home/ben/software/install/bin/perl
+#!/usr/bin/env perl
 
 # Experimental "round-trip" script.
 
