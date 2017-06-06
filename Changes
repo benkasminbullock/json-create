@@ -1,3 +1,7 @@
+0.23 2017-06-06
+* Update PP module
+* Update documentation links to metacpan
+
 0.22 2016-07-15
 * Handle strings with leading zeros which look like numbers.
 
