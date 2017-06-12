@@ -16,5 +16,6 @@ chdir $dir or die $!;
 system ("$dir/build.pl");
 my $status = system ("prove -I $dir/blib/arch -I $dir/blib/lib $dir/t/*.t");
 ok ($status == 0, "passed tests");
-system ("$dir/build.pl -c");
+# This causes failures during ./build.pl -p
+#system ("$dir/build.pl -c");
 done_testing ();
