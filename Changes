@@ -1,3 +1,6 @@
+0.23_01 2017-06-12
+* Changes for Windows compilation only
+
 0.23 2017-06-06
 * Update PP module
 * Update documentation links to metacpan
