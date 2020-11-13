@@ -605,6 +605,7 @@ json_create_add_string (json_create_t * jc, SV * input)
 {
     char * istring;
     STRLEN ilength;
+
     istring = SvPV (input, ilength);
     if (SvUTF8 (input)) {
 	/* "jc->unicode" is true if Perl says that anything in the
@@ -925,12 +926,30 @@ json_create_add_stringified (json_create_t * jc, SV *r)
     char * s;
     /* Length of "r". */
     STRLEN rlen;
+    int i;
+    int notdigits = 0;
+
     s = SvPV (r, rlen);
+    
+    /* Somehow or another it's possible to arrive here with a
+       non-digit string, precisely this happened with the "script"
+       value returned by Unicode::UCD::charinfo, which had the value
+       "Common" and was an SVt_PVIV. */
+    for (i = 0; i < rlen; i++) {
+	char c = s[i];
+	if (!isdigit (c) && c != '.' && c != '-' && c != 'e' && c != 'E') {
+	    notdigits = 1;
+	}
+    }
     /* If the stringified number has leading zeros, don't skip those,
        but put the string in quotes. It can happen that something like
        a Huffman code has leading zeros and should be treated as a
        string, yet Perl also thinks it is a number. */
      if (s[0] == '0' && rlen > 1 && isdigit (s[1])) {
+	 notdigits = 1;
+     }
+
+     if (notdigits) {
 	 CALL (add_char (jc, '"'));
 	 CALL (add_str_len (jc, s, (unsigned int) rlen));
 	 CALL (add_char (jc, '"'));
