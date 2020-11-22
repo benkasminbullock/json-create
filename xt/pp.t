@@ -1,3 +1,6 @@
+# Test the pure-Perl version of the module using the same tests as the
+# XS version.
+
 use warnings;
 use strict;
 use utf8;

@@ -1,3 +1,5 @@
+# Test the indentation feature.
+
 use warnings;
 use strict;
 use utf8;
@@ -19,7 +21,7 @@ $jc->indent (1);
 my $out = $jc->run (\%thing);
 #print "$out\n";
 like ($out, qr!^\t"I!sm, "indentation of object key");
-like ($out, qr!\t\t"sock!sm, "indentation of array element");
+like ($out, qr!^\t\t"sock!sm, "indentation of array element");
 like ($out, qr!\n$!, "final newline");
 ok (valid_json ($out), "JSON is valid");
 done_testing ();

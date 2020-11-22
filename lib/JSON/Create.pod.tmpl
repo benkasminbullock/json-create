@@ -302,6 +302,22 @@ C<false>:
 Other kinds of object can be converted to booleans using the method
 L</bool> (see below).
 
+=head3 Context-dependent variables
+
+The numerical value of context-dependent variables is taken, rather
+than the string value. Some modules, like L<Unicode::UCD>, return
+context-dependent hash values which take a non-number-like string such
+as C<Common> together with a numerical value for some results. To
+handle such ambiguity, the module uses the numerical part of the
+value. 
+
+Up to version 0.25, it was assumed that the string part was merely a
+representation of the number and the string was added to the output
+without quote marks. In version 0.26, checking was done to see if the
+string actually was a number. In version 0.27 this approach was
+abandoned and the numerical value was given precedence. See
+F<t/dualvar.t> in the distribution for the current behaviour.
+
 =head2 Other types
 
 JSON::Create is meant to provide serialization of data types. It does
@@ -385,27 +401,6 @@ from warnings to fatal errors.
 
 [% since('0.10') %]
 
-
-=head2 indent
-
-   $jc->indent (1);
-
-Add whitespace indentation to the output. The formula applied is to
-add a newline plus indentation after each opening bracket, add the
-same after each comma, and add the same before each closing
-bracket. Tabs are used for all indentation. The number of tabs is
-decided by the number of brackets open.
-
-[% example('indent') %]
-
-Users who prefer a different style of indentation should easily be
-able to modify this output to their needs using simple substitutions,
-for example C<s/^(\t+)/ "  " x length ($1) /gesm;> will convert from tabs
-to two space indentation.
-
-[% example('indent-format') %]
-
-[% since('0.27') %]
 
 =head2 strict
 
@@ -553,6 +548,27 @@ behaviour).
 See also L</Other escapes>.
 
 [% since('0.07') %]
+
+=head3 indent
+
+   $jc->indent (1);
+
+Add whitespace indentation to the output. The formula applied is to
+add a newline plus indentation after each opening bracket, add the
+same after each comma, and add the same before each closing
+bracket. Tabs are used for all indentation. The number of tabs is
+decided by the number of brackets open.
+
+[% example('indent') %]
+
+Users who prefer a different style of indentation should easily be
+able to modify this output to their needs using simple substitutions,
+for example C<s/^(\t+)/ "  " x length ($1) /gesm;> will convert from tabs
+to two space indentation.
+
+[% example('indent-format') %]
+
+[% since('0.27') %]
 
 =head3 no_javascript_safe
 
@@ -996,9 +1012,6 @@ The floating point printing loses precision on round trips.
 
 =head1 HISTORY
 
-This module is currently under development and may undergo
-backwards-incompatible changes.
-
 L</set_fformat> was added in version 0.07.
 
 L</validate> was added in version 0.07.
@@ -1008,8 +1021,8 @@ L</fatal_errors> was added in version 0.10.
 L</replace_bad_utf8> was added in version 0.12.
 
 L</obj_handler> was added in version 0.13. This version also added
-loading of the Pure-Perl version of the module, JSON::Create::PP, if
-the loading of JSON::Create failed.
+loading of the Pure-Perl version of the module, L<JSON::Create::PP>,
+if the loading of JSON::Create failed.
 
 L</non_finite_handler> was added in version 0.17.
 
@@ -1020,6 +1033,9 @@ version 0.19.
 
 The L</create_json_strict> function and L</strict> methods and
 associated diagnostics were added in version 0.20.
+
+Version 0.27 altered the handling of context-dependent variables to
+always use the numerical part.
 
 Indentation was added for objects with L</indent> in version 0.27.
 

@@ -1431,9 +1431,9 @@ json_create_recursively (json_create_t * jc, SV * input)
 	    /* Add numbers with a string version using the strings
 	       which Perl contains. */
 #ifdef JCDEBUGTYPES
-	    fprintf (stderr, "SVt_PV %s\n", SvPV_nolen (r));
+	    fprintf (stderr, "SVt_PVIV %s/%d\n", SvPV_nolen (r), SvIV (r));
 #endif /* JCDEBUGTYPES */
-	    CALL (json_create_add_stringified (jc, r));
+	    CALL (json_create_add_integer (jc, r));
 	    break;
 	    
 	default:
