@@ -3,7 +3,7 @@ use warnings;
 use strict;
 use Template;
 use FindBin '$Bin';
-use Perl::Build qw/get_version get_commit/;
+use Perl::Build qw/get_version get_info get_commit/;
 use Perl::Build::Pod ':all';
 use Getopt::Long;
 my $ok = GetOptions (
@@ -15,6 +15,7 @@ if (! $ok) {
     exit;
 }
 my %pbv = (base => $Bin);
+my $info = get_info (%pbv);
 my $version = get_version (%pbv);
 my $commit = get_commit (%pbv);
 # Names of the input and output files containing the documentation.
@@ -26,8 +27,9 @@ my $output = "$Bin/lib/JSON/$pod";
 # Template toolkit variable holder
 
 my %vars = (
-    version => $version,
     commit => $commit,
+    info => $info,
+    version => $version,
 );
 
 my $tt = Template->new (

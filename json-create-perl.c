@@ -1088,7 +1088,7 @@ json_create_add_array (json_create_t * jc, AV * av)
     CALL (add_open (jc, '['));
     n_keys = av_len (av) + 1;
 #ifdef JCDEBUGTYPES
-    fprintf (stderr, "%s:%d: n_keys = %d.\n", __FILE__, __LINE__, n_keys);
+    fprintf (stderr, "%s:%d: n_keys = %ld.\n", __FILE__, __LINE__, n_keys);
 #endif /* JCDEBUGTYPES */
     /* This deals correctly with empty arrays, since av_len is -1 if
        the array is empty, so we do not test for a valid n_keys value
@@ -1383,7 +1383,7 @@ json_create_recursively (json_create_t * jc, SV * input)
 	SV * r = input;
 	svtype t;
 #ifdef JCDEBUGTYPES
-	fprintf (stderr, "Not a reference.\n");
+	fprintf (stderr, "%s:%d: Not a reference.\n", __FILE__, __LINE__);
 #endif /* JCDEBUGTYPES */
 	t = SvTYPE (r);
 	switch (t) {
@@ -1395,45 +1395,72 @@ json_create_recursively (json_create_t * jc, SV * input)
 	case SVt_PVMG:
 	case SVt_PV:
 #ifdef JCDEBUGTYPES
-	    fprintf (stderr, "SVt_PV/PVMG %s\n", SvPV_nolen (r));
+	    fprintf (stderr, "%s:%d: SVt_PV/PVMG %s\n",
+		     __FILE__, __LINE__, SvPV_nolen (r));
 #endif /* JCDEBUGTYPES */
 	    CALL (json_create_add_string (jc, r));
 	    break;
 
 	case SVt_IV:
 #ifdef JCDEBUGTYPES
-	    fprintf (stderr, "SVt_IV %ld\n", SvIV (r));
+	    fprintf (stderr, "%s:%d: SVt_IV %ld\n",
+		     __FILE__, __LINE__, SvIV (r));
 #endif /* JCDEBUGTYPES */
 	    CALL (json_create_add_integer (jc, r));
 	    break;
 
 	case SVt_NV:
-//	    fprintf (stderr, "%lu %d %lu %lu\n", SvIOK (r), SvIOK_UV (r), SvNOK (r), SvNIOK (r));
 #ifdef JCDEBUGTYPES
-	    fprintf (stderr, "SVt_NV %g\n", SvNV (r));
+	    fprintf (stderr, "%s:%d: SVt_NV %g\n",
+		     __FILE__, __LINE__, SvNV (r));
 #endif /* JCDEBUGTYPES */
 	    CALL (json_create_add_float (jc, r));
 	    break;
 
 	case SVt_PVNV:
+	    if (SvNOK (r)) {
 #ifdef JCDEBUGTYPES
-	    fprintf (stderr, "SVt_PVNV %g\n", SvNV (r));
+		fprintf (stderr, "%s:%d: SVt_PVNV %s/%g\n",
+			 __FILE__, __LINE__, SvPV_nolen (r), SvNV (r));
 #endif /* JCDEBUGTYPES */
-	    /* We need to handle non-finite numbers without using
-	       Perl's stringified forms, because we need to put quotes
-	       around them, whereas Perl will just print 'nan' the
-	       same way it will print '0.01'. 'nan' is not valid JSON,
-	       so we have to convert to '"nan"'. */
-	    CALL (json_create_add_float (jc, r));
+		/* We need to handle non-finite numbers without using
+		   Perl's stringified forms, because we need to put quotes
+		   around them, whereas Perl will just print 'nan' the
+		   same way it will print '0.01'. 'nan' is not valid JSON,
+		   so we have to convert to '"nan"'. */
+		CALL (json_create_add_float (jc, r));
+	    }
+	    else {
+#ifdef JCDEBUGTYPES
+		fprintf (stderr, "%s:%d: SVt_PVNV without valid NV %s\n", 
+			 __FILE__, __LINE__, SvPV_nolen (r));
+#endif /* JCDEBUGTYPES */
+		CALL (json_create_add_string (jc, r));
+	    }
 	    break;
 
 	case SVt_PVIV:
 	    /* Add numbers with a string version using the strings
 	       which Perl contains. */
+	    if (SvIOK (r)) {
 #ifdef JCDEBUGTYPES
-	    fprintf (stderr, "SVt_PVIV %s/%d\n", SvPV_nolen (r), SvIV (r));
+		fprintf (stderr, "%s:%d: SVt_PVIV %s/%ld\n", 
+			 __FILE__, __LINE__, SvPV_nolen (r), SvIV (r));
 #endif /* JCDEBUGTYPES */
-	    CALL (json_create_add_integer (jc, r));
+		CALL (json_create_add_integer (jc, r));
+	    }
+	    else {
+#ifdef JCDEBUGTYPES
+		/* This combination of things happens e.g. with the
+		   value returned under "script" by charinfo of
+		   Unicode::UCD. If we don't catch it with SvIOK as
+		   above, we get an error of the form 'Argument
+		   "Latin" isn't numeric in subroutine entry' */
+		fprintf (stderr, "%s:%d: SVt_PVIV without valid IV %s\n", 
+			 __FILE__, __LINE__, SvPV_nolen (r));
+#endif /* JCDEBUGTYPES */
+		CALL (json_create_add_string (jc, r));
+	    }
 	    break;
 	    
 	default:
