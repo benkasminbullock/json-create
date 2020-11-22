@@ -400,8 +400,10 @@ decided by the number of brackets open.
 
 Users who prefer a different style of indentation should easily be
 able to modify this output to their needs using simple substitutions,
-for example C<s/^\t+/ "  " x length ($1) /gesm;> will convert from tabs
+for example C<s/^(\t+)/ "  " x length ($1) /gesm;> will convert from tabs
 to two space indentation.
+
+[% example('indent-format') %]
 
 [% since('0.27') %]
 
