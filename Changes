@@ -1,5 +1,5 @@
-0.25_01 2020-11-13
-* Bug in PVIV (string and number) handling
+0.26 2020-11-22
+* Fixed bug in PVIV (string and number) handling
 
 0.25 2020-02-14
 * Bug fix for uninitialised arrays
