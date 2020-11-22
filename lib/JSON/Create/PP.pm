@@ -287,6 +287,11 @@ sub closeB
 	$jc->newline_indent ();
     }
     $jc->{output} .= $b;
+    if ($jc->{_indent}) {
+	if ($jc->{depth} == 0) {
+	    $jc->{output} .= "\n";
+	}
+    }
 }
 
 sub comma

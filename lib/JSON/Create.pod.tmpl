@@ -390,9 +390,18 @@ from warnings to fatal errors.
 
    $jc->indent (1);
 
-Add whitespace indentation to the output.
+Add whitespace indentation to the output. The formula applied is to
+add a newline plus indentation after each opening bracket, add the
+same after each comma, and add the same before each closing
+bracket. Tabs are used for all indentation. The number of tabs is
+decided by the number of brackets open.
 
 [% example('indent') %]
+
+Users who prefer a different style of indentation should easily be
+able to modify this output to their needs using simple substitutions,
+for example C<s/^\t+/ "  " x length ($1) /gesm;> will convert from tabs
+to two space indentation.
 
 [% since('0.27') %]
 
@@ -486,12 +495,11 @@ correct object type for Types::Serialiser. To confirm this, try
 
     $jc->bool ('JSON::PP::Boolean', 'Mojo::JSON::_Bool');
 
-Round trip compatibility is also confirmed for Mojo::JSON version 6.38.
+Round trip compatibility is also confirmed for Mojo::JSON version 8.65.
 
-The current version of Mojo::JSON (Mojolicious version 6.38) actually
-depends on L<JSON::PP> and uses the type C<JSON::PP::Boolean> for its
-true and false values. Older versions used their own type,
-C<Mojo::JSON::_Bool>.
+The current version of Mojo::JSON (Mojolicious version 8.65) uses
+C<JSON::PP::Boolean> for true and false values. Older versions used
+their own type, C<Mojo::JSON::_Bool>.
 
 JSON::Create's compatibility tests for Mojo::JSON compatibility are
 available only in the git repository as F<xt/mojo-json.t>, rather than

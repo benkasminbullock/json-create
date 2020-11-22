@@ -968,12 +968,16 @@ json_create_add_stringified (json_create_t * jc, SV *r)
 
 #define DINC if (jc->indent) { jc->depth++; }
 #define DDEC if (jc->indent) { jc->depth--; }
-#define INDENT if (jc->indent) {		\
-	for (int d = 0; d < jc->depth; d++) {	\
-	    CALL (add_char (jc, '\t'));		\
-	}					\
-    }
-#define NEWLINE if (jc->indent) { CALL (add_char (jc, '\n')); }
+
+static json_create_status_t newline_indent(json_create_t * jc)
+{
+    int d;
+    CALL (add_char (jc, '\n'));
+    for (d = 0; d < jc->depth; d++) {
+	CALL (add_char (jc, '\t'));		\
+    }    
+    return json_create_ok;
+}
 
 /* Add a comma where necessary. This is shared between objects and
    arrays. */
@@ -981,27 +985,37 @@ json_create_add_stringified (json_create_t * jc, SV *r)
 #define COMMA					\
     if (i > 0) {				\
 	CALL (add_char (jc, ','));		\
-	NEWLINE;				\
-	INDENT;					\
+	if (jc->indent) {			\
+	    CALL (newline_indent (jc));		\
+	}					\
     }
 
 static INLINE json_create_status_t
 add_open (json_create_t * jc, unsigned char c)
 {
     CALL (add_char (jc, c));
-    DINC;
-    NEWLINE;
-    INDENT;
+    if (jc->indent) {
+	DINC;
+	CALL (newline_indent (jc));		\
+    }
     return json_create_ok;
 }
 
 static INLINE json_create_status_t
 add_close (json_create_t * jc, unsigned char c)
 {
-    DDEC;
-    NEWLINE;
-    INDENT;
+    if (jc->indent) {
+	DDEC;
+	CALL (newline_indent (jc));		\
+    }
     CALL (add_char (jc, c));
+    if (jc->indent) {
+	/* Add a new line after the final brace, otherwise we have no
+	   newline on the final line of output. */
+	if (jc->depth == 0) {
+	    CALL (add_char (jc, '\n'));
+	}
+    }
     return json_create_ok;
 }
 
