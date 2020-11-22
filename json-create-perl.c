@@ -76,6 +76,8 @@ typedef struct json_create {
     SV * obj_handler;
     /* User non-finite-float handler. */
     SV * non_finite_handler;
+    /* Indentation depth (no. of tabs). */
+    unsigned int depth;
     /* Do any of the SVs have a Unicode flag? */
     unsigned int unicode : 1;
     /* Should we convert / into \/? */
@@ -98,6 +100,8 @@ typedef struct json_create {
     unsigned int utf8_dangerous : 1;
     /* Strict mode, reject lots of things. */
     unsigned int strict : 1;
+    /* Add whitespace to output to make it human-readable. */
+    unsigned int indent : 1;
 }
 json_create_t;
 
@@ -962,13 +966,44 @@ json_create_add_stringified (json_create_t * jc, SV *r)
     return add_str_len (jc, s, (unsigned int) rlen);
 }
 
+#define DINC if (jc->indent) { jc->depth++; }
+#define DDEC if (jc->indent) { jc->depth--; }
+#define INDENT if (jc->indent) {		\
+	for (int d = 0; d < jc->depth; d++) {	\
+	    CALL (add_char (jc, '\t'));		\
+	}					\
+    }
+#define NEWLINE if (jc->indent) { CALL (add_char (jc, '\n')); }
+
 /* Add a comma where necessary. This is shared between objects and
    arrays. */
 
 #define COMMA					\
     if (i > 0) {				\
 	CALL (add_char (jc, ','));		\
+	NEWLINE;				\
+	INDENT;					\
     }
+
+static INLINE json_create_status_t
+add_open (json_create_t * jc, unsigned char c)
+{
+    CALL (add_char (jc, c));
+    DINC;
+    NEWLINE;
+    INDENT;
+    return json_create_ok;
+}
+
+static INLINE json_create_status_t
+add_close (json_create_t * jc, unsigned char c)
+{
+    DDEC;
+    NEWLINE;
+    INDENT;
+    CALL (add_char (jc, c));
+    return json_create_ok;
+}
 
 //#define JCDEBUGTYPES
 
@@ -984,7 +1019,7 @@ json_create_add_object (json_create_t * jc, HV * input_hv)
     char * key;
     I32 keylen;
 
-    CALL (add_char (jc, '{'));
+    CALL (add_open (jc, '{'));
     n_keys = hv_iterinit (input_hv);
     for (i = 0; i < n_keys; i++) {
 	HE * he;
@@ -1018,7 +1053,7 @@ json_create_add_object (json_create_t * jc, HV * input_hv)
 #endif /* JCDEBUGTYPES */
 	CALL (json_create_recursively (jc, value));
     }
-    CALL (add_char (jc, '}'));
+    CALL (add_close (jc, '}'));
     return json_create_ok;
 }
 
@@ -1036,7 +1071,7 @@ json_create_add_array (json_create_t * jc, AV * av)
 #ifdef JCDEBUGTYPES
     fprintf (stderr, "%s:%d: Adding first char [.\n", __FILE__, __LINE__);
 #endif /* JCDEBUGTYPES */
-    CALL (add_char (jc, '['));
+    CALL (add_open (jc, '['));
     n_keys = av_len (av) + 1;
 #ifdef JCDEBUGTYPES
     fprintf (stderr, "%s:%d: n_keys = %d.\n", __FILE__, __LINE__, n_keys);
@@ -1067,7 +1102,7 @@ json_create_add_array (json_create_t * jc, AV * av)
 #ifdef JCDEBUGTYPES
     fprintf (stderr, "%s:%d: Adding last char ].\n", __FILE__, __LINE__);
 #endif /* JCDEBUGTYPES */
-    CALL (add_char (jc, ']'));
+    CALL (add_close (jc, ']'));
     return json_create_ok;
 }
 
