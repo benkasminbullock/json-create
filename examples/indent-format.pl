@@ -2,8 +2,8 @@
 use warnings;
 use strict;
 use JSON::Create;
-my %thing = ("it's your thing" => [qw! do what you wanna do!],
-	     "I can't tell you" => [qw! who to sock it to !]);
+my %thing = ("it's your thing" => [qw! do what you !, {wanna => 'do'}],
+	     "I can't tell you" => [{who => 2}, qw! sock it!, 2]);
 my $jc = JSON::Create->new ();
 $jc->indent (1);
 my $out = $jc->run (\%thing);
