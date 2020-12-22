@@ -1,5 +1,6 @@
-0.28_01 2020-12-22
+0.28_02 2020-12-22
 * Add sorting of indented output by key
+* Add user-defined sort
 
 0.28 2020-11-24
 * Test context-dependent variables & use numerical part only if valid.

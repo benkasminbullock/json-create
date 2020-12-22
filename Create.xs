@@ -72,9 +72,23 @@ CODE:
 void
 cmp (jc, cmp)
 	JSON::Create jc;
-	CV * cmp;
+	SV * cmp;
 CODE:
-	jc->cmp = cmp;
+	PERLJCCALL (json_create_remove_cmp (jc));
+	if (SvTRUE (cmp)) {
+	    jc->cmp = cmp;
+	    SvREFCNT_inc (cmp);
+	    jc->n_mallocs++;
+	}
+
+
+int
+cmp_ok ()
+CODE:
+	RETVAL = json_create_cmp_ok ();
+OUTPUT:
+	RETVAL
+
 
 void
 set_fformat_unsafe (jc, fformat)

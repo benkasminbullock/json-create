@@ -1,13 +1,13 @@
 package JSON::Create;
 require Exporter;
 @ISA = qw(Exporter);
-@EXPORT_OK = qw/create_json create_json_strict/;
+@EXPORT_OK = qw/create_json create_json_strict cmp_ok/;
 %EXPORT_TAGS = (
     all => \@EXPORT_OK,
 );
 use warnings;
 use strict;
-our $VERSION = '0.28_01';
+our $VERSION = '0.28_02';
 
 # Are we running as XS?
 

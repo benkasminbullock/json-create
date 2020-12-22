@@ -78,7 +78,7 @@ typedef struct json_create {
        type numbers. */
     SV * non_finite_handler;
     /* User's sorter for entries. */
-    CV * cmp;
+    SV * cmp;
     /* Indentation depth (no. of tabs). */
     unsigned int depth;
 
@@ -1029,11 +1029,91 @@ add_close (json_create_t * jc, unsigned char c)
 
 //#define JCDEBUGTYPES
 
-static I32
-json_create_user_compare (json_create_t * jc, SV * a, SV * b)
+static int
+json_create_user_compare (void * thunk, const void * va, const void * vb)
 {
-    /* not implemented yet. */
-    return -1000000;
+    dSP;
+    SV * sa;
+    SV * sb;
+    json_create_t * jc;
+    int n;
+    int c;
+
+    sa = *(SV **) va;
+    sb = *(SV **) vb;
+    jc = (json_create_t *) thunk;
+
+    ENTER;
+    SAVETMPS;
+    PUSHMARK(SP);
+    EXTEND(SP, 2);
+    XPUSHs(sv_2mortal (newSVsv (sa)));
+    XPUSHs(sv_2mortal (newSVsv (sb)));
+    PUTBACK;
+    n = call_sv (jc->cmp, G_SCALAR);
+    if (n != 1) {
+	croak ("Wrong number of return values %d from comparison function",
+	       n);
+    }
+    SPAGAIN;
+    c = POPi;
+    PUTBACK;
+    FREETMPS;
+    LEAVE;
+    return c;
+}
+
+static int
+gnu_compare (const void * a, const void * b, void * v)
+{
+    return json_create_user_compare (v, a, b);
+}
+
+/* https://github.com/noporpoise/sort_r/blob/master/sort_r.h */
+
+#if (defined __APPLE__ || defined __MACH__ || defined __DARWIN__ || \
+     defined __FreeBSD__ || defined __DragonFly__)
+#define JCBSDSORT
+#elif (defined _GNU_SOURCE || defined __gnu_hurd__ || defined __GNU__ || \
+       defined __linux__ || defined __MINGW32__ || defined __GLIBC__)
+#define JCGNUSORT
+#elif (defined _WIN32 || defined _WIN64 || defined __WINDOWS__)
+#define JCWINSORT
+#endif
+
+static int
+json_create_cmp_ok ()
+{
+#if defined(JCBSDSORT) || defined(JCGNUSORT) || defined(JCWINSORT)
+    return 1;
+#else
+    return 0;
+#endif /* defined something */
+}
+
+static void
+boss_sort (SV ** keys, int n_keys, json_create_t * jc)
+{
+    void * vjc;
+    size_t s;
+
+    vjc = (void *) jc;
+    s = (size_t) sizeof (SV **);
+
+
+#ifdef JCBSDSORT
+    qsort_r (keys, n_keys, s, vjc, json_create_user_compare);
+    return;
+#endif
+#ifdef JCGNUSORT
+    qsort_r (keys, n_keys, s, gnu_compare, vjc);
+    return;
+#endif
+#ifdef JCWINSORT
+    qsort_s (keys, n_keys, s, json_create_user_compare, vjc);
+    return;
+#endif
+    croak ("User-defined sort is not supported");
 }
 
 static INLINE json_create_status_t
@@ -1063,7 +1143,7 @@ json_create_add_object_sorted (json_create_t * jc, HV * input_hv)
     }
 
     if (jc->cmp) {
-//	sortsv_flags (keys, (size_t) n_keys, jc->cmp, /* flags */ 0);
+	boss_sort (keys, n_keys, jc);
     }
     else {
 	sortsv_flags (keys, (size_t) n_keys, Perl_sv_cmp, /* flags */ 0);
@@ -1742,6 +1822,17 @@ json_create_remove_non_finite_handler (json_create_t * jc)
 }
 
 static json_create_status_t
+json_create_remove_cmp (json_create_t * jc)
+{
+    if (jc->cmp) {
+	SvREFCNT_dec (jc->cmp);
+	jc->cmp = 0;
+	jc->n_mallocs--;
+    }
+    return json_create_ok;
+}
+
+static json_create_status_t
 json_create_free (json_create_t * jc)
 {
     CALL (json_create_free_fformat (jc));
@@ -1749,6 +1840,7 @@ json_create_free (json_create_t * jc)
     CALL (json_create_remove_type_handler (jc));
     CALL (json_create_remove_obj_handler (jc));
     CALL (json_create_remove_non_finite_handler (jc));
+    CALL (json_create_remove_cmp (jc));
 
     /* Finished, check we have no leaks before freeing. */
 
