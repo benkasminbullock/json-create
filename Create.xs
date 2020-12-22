@@ -63,6 +63,20 @@ OUTPUT:
 	RETVAL
 
 void
+sort (jc, onoff)
+	JSON::Create jc;
+	SV * onoff;
+CODE:
+	jc->sort = SvTRUE (onoff) ? 1 : 0;
+
+void
+cmp (jc, cmp)
+	JSON::Create jc;
+	CV * cmp;
+CODE:
+	jc->cmp = cmp;
+
+void
 set_fformat_unsafe (jc, fformat)
 	JSON::Create jc;
 	SV * fformat;

@@ -74,10 +74,16 @@ typedef struct json_create {
     SV * type_handler;
     /* User obj handler. */
     SV * obj_handler;
-    /* User non-finite-float handler. */
+    /* User non-finite-float handler, what to do with "inf", "nan"
+       type numbers. */
     SV * non_finite_handler;
+    /* User's sorter for entries. */
+    CV * cmp;
     /* Indentation depth (no. of tabs). */
     unsigned int depth;
+
+    /* One-bit flags. */
+
     /* Do any of the SVs have a Unicode flag? */
     unsigned int unicode : 1;
     /* Should we convert / into \/? */
@@ -102,6 +108,8 @@ typedef struct json_create {
     unsigned int strict : 1;
     /* Add whitespace to output to make it human-readable. */
     unsigned int indent : 1;
+    /* Sort the keys of objects. */
+    unsigned int sort : 1;
 }
 json_create_t;
 
@@ -1021,6 +1029,74 @@ add_close (json_create_t * jc, unsigned char c)
 
 //#define JCDEBUGTYPES
 
+static I32
+json_create_user_compare (json_create_t * jc, SV * a, SV * b)
+{
+    /* not implemented yet. */
+    return -1000000;
+}
+
+static INLINE json_create_status_t
+json_create_add_object_sorted (json_create_t * jc, HV * input_hv)
+{
+    I32 n_keys;
+    int i;
+    SV * value;
+    char * key;
+    SV ** keys;
+
+    CALL (add_open (jc, '{'));
+    n_keys = hv_iterinit (input_hv);
+    if (n_keys == 0) {
+	CALL (add_close (jc, '}'));
+	return json_create_ok;
+    }
+    Newxz (keys, n_keys, SV *);
+    jc->n_mallocs++;
+    for (i = 0; i < n_keys; i++) {
+	HE * he;
+	he = hv_iternext (input_hv);
+	keys[i] = hv_iterkeysv (he);
+	if (HeUTF8 (he)) {
+	    jc->unicode = 1;
+	}
+    }
+
+    if (jc->cmp) {
+//	sortsv_flags (keys, (size_t) n_keys, jc->cmp, /* flags */ 0);
+    }
+    else {
+	sortsv_flags (keys, (size_t) n_keys, Perl_sv_cmp, /* flags */ 0);
+    }
+
+    for (i = 0; i < n_keys; i++) {
+	SV * key_sv;
+	SV ** sv_ptr;
+	char * key;
+	STRLEN keylen;
+	HE * he;
+
+	COMMA;
+	key_sv = keys[i];
+	key = SvPV (key_sv, keylen);
+	CALL (json_create_add_key_len (jc, (const unsigned char *) key,
+				       keylen));
+	he = hv_fetch_ent (input_hv, key_sv, 0, 0);
+	if (! he) {
+	    croak ("%s:%d: invalid sv_ptr for '%s' at offset %d",
+		   __FILE__, __LINE__, key, i);
+	}
+	CALL (add_char (jc, ':'));
+	CALL (json_create_recursively (jc, HeVAL(he)));
+    }
+    Safefree (keys);
+    jc->n_mallocs--;
+
+    CALL (add_close (jc, '}'));
+
+    return json_create_ok;
+}
+
 /* Given a reference to a hash in "input_hv", recursively process it
    into JSON. "object" here means "JSON object", not "Perl object". */
 
@@ -1031,7 +1107,12 @@ json_create_add_object (json_create_t * jc, HV * input_hv)
     int i;
     SV * value;
     char * key;
+    /* I32 is correct, not STRLEN; see hv.c. */
     I32 keylen;
+
+    if (jc->sort) {
+	return json_create_add_object_sorted (jc, input_hv);
+    }
 
     CALL (add_open (jc, '{'));
     n_keys = hv_iterinit (input_hv);
