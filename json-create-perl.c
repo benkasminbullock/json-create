@@ -1074,11 +1074,30 @@ gnu_compare (const void * a, const void * b, void * v)
 #if (defined __APPLE__ || defined __MACH__ || defined __DARWIN__ || \
      defined __FreeBSD__ || defined __DragonFly__)
 #define JCBSDSORT
+
+/*
+  The noporpoise above puts WIN32 after Gnu:
+
+  https://github.com/noporpoise/sort_r/blob/master/sort_r.h#L33
+
+  but that fails on gcc on windows:
+
+  http://matrix.cpantesters.org/?dist=JSON-Create+0.28_02
+
+  gcc, strawberry perl:
+  http://www.cpantesters.org/cpan/report/98b38e40-6bf3-1014-aa85-ed2905169eb4
+
+  g++, strawberry perl:
+  http://www.cpantesters.org/cpan/report/e45f090c-6bf3-1014-aac4-94c742829451
+
+  due to not finding qsort_r, it looks like that is not included.
+*/
+
+#elif (defined _WIN32 || defined _WIN64 || defined __WINDOWS__)
+#define JCWINSORT
 #elif (defined _GNU_SOURCE || defined __gnu_hurd__ || defined __GNU__ || \
        defined __linux__ || defined __MINGW32__ || defined __GLIBC__)
 #define JCGNUSORT
-#elif (defined _WIN32 || defined _WIN64 || defined __WINDOWS__)
-#define JCWINSORT
 #endif
 
 static int
