@@ -11,8 +11,6 @@ binmode STDOUT, ":encoding(utf8)";
 binmode STDERR, ":encoding(utf8)";
 use JSON::Create;
 
-plan skip_all => "OS does not support user-defined cmp" unless JSON::Create::cmp_ok ();
-
 my $jc = JSON::Create->new ();
 $jc->sort (1);
 $jc->indent (1);

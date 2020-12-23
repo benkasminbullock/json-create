@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 #include "unicode.h"
+#include "qsort-r.c"
 #include "json-create-perl.c"
 
 #define PERLJCCALL(x) {					\
@@ -23,22 +24,6 @@ typedef json_create_t * JSON__Create;
 MODULE=JSON::Create PACKAGE=JSON::Create
 
 PROTOTYPES: DISABLE
-
-SV *
-create_json (input)
-	SV * input;
-CODE:
-	RETVAL = json_create (input);
-OUTPUT:
-	RETVAL
-
-SV *
-create_json_strict (input)
-	SV * input;
-CODE:
-	RETVAL = json_create_strict (input);
-OUTPUT:
-	RETVAL
 
 void
 DESTROY (jc)
@@ -81,13 +66,6 @@ CODE:
 	    jc->n_mallocs++;
 	}
 
-
-int
-cmp_ok ()
-CODE:
-	RETVAL = json_create_cmp_ok ();
-OUTPUT:
-	RETVAL
 
 
 void

@@ -288,6 +288,39 @@ add_str_len (json_create_t * jc, const char * s, unsigned int slen)
     return json_create_ok;
 }
 
+static json_create_status_t newline_indent(json_create_t * jc)
+{
+    int d;
+    CALL (add_char (jc, '\n'));
+    for (d = 0; d < jc->depth; d++) {
+	CALL (add_char (jc, '\t'));		\
+    }    
+    return json_create_ok;
+}
+
+
+static INLINE json_create_status_t
+add_str_len_indent (json_create_t * jc, const char * s, unsigned int slen)
+{
+    int i;
+
+    for (i = 0; i < slen; i++) {
+	int d;
+	unsigned char c;
+	c = (unsigned char) s[i];
+	if (c == '\n') {
+	    if (i < slen - 1) {
+		CALL (newline_indent (jc));
+	    }
+	    // else just discard it, final newline
+	}
+	else {
+	    CALL (add_char (jc, c));
+	}
+    }
+    return json_create_ok;
+}
+
 /* "Add a string" macro, this just saves cut and pasting a string and
    typing "strlen" over and over again. For ASCII values only, not
    Unicode safe. */
@@ -874,7 +907,12 @@ json_create_call_to_json (json_create_t * jc, SV * cv, SV * r)
 	/* This string may contain invalid UTF-8. */
 	jc->utf8_dangerous = 1;
     }
-    CALL (add_str_len (jc, jsonc, jsonl));
+    if (jc->indent) {
+	CALL (add_str_len_indent (jc, jsonc, jsonl));
+    }
+    else {
+	CALL (add_str_len (jc, jsonc, jsonl));
+    }
     SvREFCNT_dec (json);
     return json_create_ok;
 }
@@ -977,16 +1015,6 @@ json_create_add_stringified (json_create_t * jc, SV *r)
 #define DINC if (jc->indent) { jc->depth++; }
 #define DDEC if (jc->indent) { jc->depth--; }
 
-static json_create_status_t newline_indent(json_create_t * jc)
-{
-    int d;
-    CALL (add_char (jc, '\n'));
-    for (d = 0; d < jc->depth; d++) {
-	CALL (add_char (jc, '\t'));		\
-    }    
-    return json_create_ok;
-}
-
 /* Add a comma where necessary. This is shared between objects and
    arrays. */
 
@@ -1063,78 +1091,6 @@ json_create_user_compare (void * thunk, const void * va, const void * vb)
     return c;
 }
 
-static int
-gnu_compare (const void * a, const void * b, void * v)
-{
-    return json_create_user_compare (v, a, b);
-}
-
-/* https://github.com/noporpoise/sort_r/blob/master/sort_r.h */
-
-#if (defined __APPLE__ || defined __MACH__ || defined __DARWIN__ || \
-     defined __FreeBSD__ || defined __DragonFly__)
-#define JCBSDSORT
-
-/*
-  The noporpoise above puts WIN32 after Gnu:
-
-  https://github.com/noporpoise/sort_r/blob/master/sort_r.h#L33
-
-  but that fails on gcc on windows:
-
-  http://matrix.cpantesters.org/?dist=JSON-Create+0.28_02
-
-  gcc, strawberry perl:
-  http://www.cpantesters.org/cpan/report/98b38e40-6bf3-1014-aa85-ed2905169eb4
-
-  g++, strawberry perl:
-  http://www.cpantesters.org/cpan/report/e45f090c-6bf3-1014-aac4-94c742829451
-
-  due to not finding qsort_r, it looks like that is not included.
-*/
-
-#elif (defined _WIN32 || defined _WIN64 || defined __WINDOWS__)
-#define JCWINSORT
-#elif (defined _GNU_SOURCE || defined __gnu_hurd__ || defined __GNU__ || \
-       defined __linux__ || defined __MINGW32__ || defined __GLIBC__)
-#define JCGNUSORT
-#endif
-
-static int
-json_create_cmp_ok ()
-{
-#if defined(JCBSDSORT) || defined(JCGNUSORT) || defined(JCWINSORT)
-    return 1;
-#else
-    return 0;
-#endif /* defined something */
-}
-
-static void
-boss_sort (SV ** keys, int n_keys, json_create_t * jc)
-{
-    void * vjc;
-    size_t s;
-
-    vjc = (void *) jc;
-    s = (size_t) sizeof (SV **);
-
-
-#ifdef JCBSDSORT
-    qsort_r (keys, n_keys, s, vjc, json_create_user_compare);
-    return;
-#endif
-#ifdef JCGNUSORT
-    qsort_r (keys, n_keys, s, gnu_compare, vjc);
-    return;
-#endif
-#ifdef JCWINSORT
-    qsort_s (keys, n_keys, s, json_create_user_compare, vjc);
-    return;
-#endif
-    croak ("User-defined sort is not supported");
-}
-
 static INLINE json_create_status_t
 json_create_add_object_sorted (json_create_t * jc, HV * input_hv)
 {
@@ -1144,12 +1100,12 @@ json_create_add_object_sorted (json_create_t * jc, HV * input_hv)
     char * key;
     SV ** keys;
 
-    CALL (add_open (jc, '{'));
     n_keys = hv_iterinit (input_hv);
     if (n_keys == 0) {
-	CALL (add_close (jc, '}'));
+	CALL (add_str_len (jc, "{}", strlen ("{}")));
 	return json_create_ok;
     }
+    CALL (add_open (jc, '{'));
     Newxz (keys, n_keys, SV *);
     jc->n_mallocs++;
     for (i = 0; i < n_keys; i++) {
@@ -1162,7 +1118,8 @@ json_create_add_object_sorted (json_create_t * jc, HV * input_hv)
     }
 
     if (jc->cmp) {
-	boss_sort (keys, n_keys, jc);
+	json_create_qsort_r (keys, n_keys, sizeof (SV **), jc,
+			     json_create_user_compare);
     }
     else {
 	sortsv_flags (keys, (size_t) n_keys, Perl_sv_cmp, /* flags */ 0);
@@ -1213,8 +1170,12 @@ json_create_add_object (json_create_t * jc, HV * input_hv)
 	return json_create_add_object_sorted (jc, input_hv);
     }
 
-    CALL (add_open (jc, '{'));
     n_keys = hv_iterinit (input_hv);
+    if (n_keys == 0) {
+	CALL (add_str_len (jc, "{}", strlen ("{}")));
+	return json_create_ok;
+    }
+    CALL (add_open (jc, '{'));
     for (i = 0; i < n_keys; i++) {
 	HE * he;
 
@@ -1725,15 +1686,6 @@ json_create_strict (SV * input)
 {
     json_create_t jc = {0};
     jc.strict = 1;
-    return json_create_run (& jc, input);
-}
-
-/* Entry point for "create_json". */
-
-static INLINE SV *
-json_create (SV * input)
-{
-    json_create_t jc = {0};
     return json_create_run (& jc, input);
 }
 

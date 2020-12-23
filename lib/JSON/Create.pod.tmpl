@@ -111,20 +111,23 @@ value. [% see('fatal_errors') %].
 
 =head2 create_json
 
-    my $json = create_json (\%hash);
+    my $json = create_json (\%hash, %args);
 
 This converts a hash reference, array reference, or scalar into
-JSON. The return value is the output JSON as a string.
+JSON. The return value is the output JSON as a string. The arguments
+available in C<%args> are the same as L</new> and L</set>.
 
 Details of the conversion of each type are given in
 L</CONVERSIONS>.
 
 =head2 create_json_strict
 
-    my $json = create_json_strict (\%hash);
+    my $json = create_json_strict (\%hash, %args);
 
 This is the same as L</create_json>, except that it rejects ambiguous
-inputs. See L</strict> for details.
+inputs. See L</strict> for details. It is effectively identical to
+
+    my $json = create_json (\%hash, %args, strict => 1);
 
 [% fsince('0.20') %]
 
@@ -144,6 +147,9 @@ order of the keys is as they are supplied by Perl.
 Nested hashes are recursively followed:
 
 [% example('nested-hash') %]
+
+Notice that the order of array elements is not affected by the
+L</sort> option.
 
 =head2 Arrays
 
@@ -370,21 +376,6 @@ L</create_json> or L</create_json_strict>, create an object with
 L</new> and then set preferences on that object before producing
 output with L</run>.
 
-=head2 new
-
-    my $jc = JSON::Create->new ();
-
-Create a new "JSON::Create" object. Use L</run> to generate JSON with
-it.
-
-=head2 run
-
-    my $json = $jc->run ($input);
-
-This does exactly the same thing as L</create_json>, unless the output
-format associated with C<$jc> has been altered using L</Methods for
-formatting the output>. The return value is the output JSON.
-
 =head2 fatal_errors
 
     $jc->fatal_errors (1);
@@ -396,6 +387,44 @@ from warnings to fatal errors.
 
 [% since('0.10') %]
 
+=head2 new
+
+    my $jc = JSON::Create->new ();
+
+Create a new "JSON::Create" object. Use L</run> to generate JSON with
+it. It is possible to supply arguments with new:
+
+    my $jc = JSON::Create->new (%args);
+
+All of the same values as L</set> may be used.
+
+=head2 run
+
+    my $json = $jc->run ($input);
+
+This does exactly the same thing as L</create_json>, unless the output
+format associated with C<$jc> has been altered using L</Methods for
+formatting the output>. The return value is the output JSON.
+
+=head2 set
+
+    $json->set (strict => 1, fatal_errors => 1, validate => 1);
+
+=over
+
+[% FOR v IN setvar %]
+
+=item "[% v %]"
+
+This corresponds to L</[% v %]>
+[%- IF v == "bool" %],
+but its value should be an array reference rather than a list
+[% END -%]
+.
+
+[% END %]
+
+=back
 
 =head2 strict
 
@@ -427,7 +456,7 @@ ASCII-only or character string-only (C<utf8>).
 
 [% since('0.20') %]
 
-=head2 Methods for formatting the output
+=head1 Methods for formatting the output
 
 These methods work on the object created with L</new> to format the
 output JSON in a different way from the default when operating
@@ -436,7 +465,7 @@ L</run>.
 These methods do not affect the behaviour of L</create_json> or
 L</create_json_strict>.
 
-=head3 bool
+=head2 bool
 
     $jc->bool ('boolean');
     $jc->bool (qw/boolean JSON::Tiny::_Bool/);
@@ -444,14 +473,16 @@ L</create_json_strict>.
 Given a list of names of object types, the JSON::Create object, C<$jc>
 in the example, will convert objects of these types into the JSON
 literals C<true> or C<false> depending on whether Perl thinks they're
-true or false. For example,
+true or false.
+
+=head3 Converting booleans to "true" and "false"
 
 [% example('boolean') %]
 
 If you prefer to take over all object handling yourself, there is also
 L</obj_handler>, which overrides what is set with C<bool>.
 
-=head4 Interoperability
+=head3 Interoperability
 
 The boolean values of the following Perl modules can interoperate with
 JSON::Create. 
@@ -512,7 +543,23 @@ yourself, the tests will just be skipped.
 
 More modules will be added to this list as time permits.
 
-=head3 downgrade_utf8
+=head2 cmp
+
+Set a user-defined routine to be used with the L</sort>
+option.
+
+Sorting the keys of objects in a user-defined order will reduce the
+performance of the module. The built-in variables C<$a> and C<$b> are
+not available to your sort routine, so you need to get the arguments
+yourself.
+
+=head3 Sorting object elements case-independently
+
+[% example("cmp") %]
+
+[% since('0.29') %]
+
+=head2 downgrade_utf8
 
     $jc->downgrade_utf8 (1);
 
@@ -529,14 +576,16 @@ This method should be considered experimental.
 
 [% since('0.18') %]
 
-=head3 escape_slash
+=head2 escape_slash
 
     $jc->escape_slash (1);
 
 Call this with a true value to make the slash (known as the "solidus"
-in the JSON specification) be escaped with a backslash. Call this with
-any false value to make the slash not be escaped (the default
-behaviour).
+in the JSON specification) be escaped with a backslash, so C</> gets
+turned into C<\/>. Call this with any false value to make the slash
+not be escaped (the default behaviour).
+
+=head3 Escaping slashes
 
 [% example('escape-slash') %]
 
@@ -544,7 +593,7 @@ See also L</Other escapes>.
 
 [% since('0.07') %]
 
-=head3 indent
+=head2 indent
 
    $jc->indent (1);
 
@@ -554,7 +603,11 @@ same after each comma, and add the same before each closing
 bracket. Tabs are used for all indentation. The number of tabs is
 decided by the number of brackets open.
 
+=head3 Example of indentation
+
 [% example('indent') %]
+
+=head3 Reformatting the indentation
 
 Users who prefer a different style of indentation should easily be
 able to modify this output to their needs using simple substitutions,
@@ -565,7 +618,7 @@ to two space indentation.
 
 [% since('0.27') %]
 
-=head3 no_javascript_safe
+=head2 no_javascript_safe
 
     $jc->no_javascript_safe (1);
 
@@ -573,11 +626,13 @@ If called with a true value, this switches off JavaScript protection
 in the output JSON. If called with a false value, the JavaScript
 protection is switched on again.
 
+=head3 Switching JavaScript-safety on and off
+
 [% example('js-safe') %]
 
 See also L</U+2028 and U+2029 (JavaScript clashes)>.
 
-=head3 non_finite_handler
+=head2 non_finite_handler
 
    $jc->non_finite_handler (\& handler);
 
@@ -587,8 +642,11 @@ positive infinity, with a user-defined routine. The default behaviour
 of this module is described at L</Floating point numbers>. 
 
 The routine C<handler> is supplied with the non-finite number as its
-sole argument, and returns one argument, the output JSON. For example,
-to always use C<null> in place of the default, supply a function like
+sole argument, and returns one argument, the output JSON. 
+
+=head3 Using null for infinity and NaN
+
+To always use C<null> in place of the default, supply a function like
 the following:
 
 [% example('non-finite-handler') %]
@@ -597,7 +655,7 @@ the following:
 
 [% since(0.17) %]
 
-=head3 obj
+=head2 obj
 
     $jc->obj ('Zilog::Z80' => sub { my ($obj) = @_; print "\"Z80\""; });
 
@@ -636,6 +694,8 @@ closure:
 
 [% example('closure') %]
 
+=head3 Throwing an exception in your callback
+
 Exceptions (fatal errors) are not caught by JSON::Create, so if you
 want to halt the execution of JSON::Create, you can throw an exception
 within your callback.
@@ -647,7 +707,7 @@ L</obj_handler>.
 
 [% handler_undef %]
 
-=head3 obj_handler
+=head2 obj_handler
 
     $jc->obj_handler (\& my_obj_handler);
 
@@ -657,10 +717,14 @@ handled by your handler. For example, you can replace all objects with
 
 [% handler_common('obj_handler') %]
 
+=head3 Turning various types of object into JSON
+
 Here is an example of handling various types of object with a
 user-supplied handler:
 
 [% example('obj-handler') %]
+
+=head3 Turning everything into JSON
 
 Here is an example of a "try harder" routine which does something like
 the L<JSON> module does, by looking for methods on all objects:
@@ -675,7 +739,7 @@ details about the callbacks, see L</obj>.
 
 [% since('0.13') %]
 
-=head3 replace_bad_utf8
+=head2 replace_bad_utf8
 
     $jc->replace_bad_utf8 (1);
 
@@ -691,7 +755,7 @@ see('downgrade_utf8') %].
 
 [% since(0.12) %]
 
-=head3 set_fformat
+=head2 set_fformat
 
     $jc->set_fformat ('%e');
 
@@ -700,21 +764,27 @@ numbers. This is validated and a warning printed if the format cannot
 be used. The format is also restricted to a maximum length to prevent
 buffer overflows within the module.
 
+=head3 Setting the format of floating point numbers
+
 [% example('set-fformat') %]
 
 [% since('0.07') %]
 
-=head3 sort
+=head2 sort
 
    $jc->sort (1);
 
-Sort hash keys using Perl's default sorting.
+Sort hash keys. The default is to use Perl's string sorting. Use
+L</cmp> to supply your own sorting routine. This does not affect the
+order of array elements, only hash keys.
+
+=head3 JSON with indentation and sorted keys
 
 [% example('sort') %]
 
 [% since('0.29') %]
 
-=head3 type_handler
+=head2 type_handler
 
     $jc->type_handler (sub {return 'null'});
 
@@ -729,6 +799,8 @@ than print an error, the above example will do it.
 
 [% handler_common('type_handler') %]
 
+=head3 Ways to handle types
+
 The following example shows a few possibilities for handling types:
 
 [% example('type-handler') %]
@@ -740,16 +812,18 @@ references.
 
 [% since('0.10') %]
 
-=head3 unicode_escape_all
+=head2 unicode_escape_all
 
     $jc->unicode_escape_all (1);
 
 Call this with a true value to make all Unicode characters be escaped
 into the C<\u3000> format. A false value switches that off again.
 
-For example,
+=head3 Escape all Unicode
 
 [% example('escape-all') %]
+
+=head3 Output is always UTF-8
 
 Note that JSON::Create contains its own UTF-8 validation, and this
 escaping is applied regardless of whether Perl marks the bytes as
@@ -759,7 +833,7 @@ escaping is applied regardless of whether Perl marks the bytes as
 
 See also L</Input strings must be UTF-8>.
 
-=head3 unicode_upper
+=head2 unicode_upper
 
     $jc->unicode_upper (1);
 
@@ -767,7 +841,7 @@ Call this with a true value to make Unicode escapes use upper case
 letters in the hexadecimal. See the example under
 L</unicode_escape_all>.
 
-=head3 validate
+=head2 validate
 
     $jc->validate (1);
 
@@ -1046,6 +1120,9 @@ use the numerical part as a JSON number if valid, and the string part
 as a JSON string if not a valid number. See L</Context-dependent
 variables> for all the details.
 
+Arguments to L</create_json> and L</create_json_strict>, and the
+methods L</set>, L</sort> and L</cmp> were added in version 0.29.
+
 =head1 SEE ALSO
 
 =over
@@ -1089,6 +1166,9 @@ to Perl XS programmers here:
 =back
 
 [% INCLUDE "author" %]
+
+The sorting code used by L</cmp> comes from the FreeBSD source code
+and is copyright by the Regents of the University of California.
 
 =cut
 

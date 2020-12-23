@@ -47,7 +47,7 @@ To test this module, do
 
 package JSON::Create::PP;
 use parent Exporter;
-our @EXPORT_OK = qw/create_json create_json_strict json_escape cmp_ok/;
+our @EXPORT_OK = qw/create_json create_json_strict json_escape/;
 our %EXPORT_TAGS = (all => \@EXPORT_OK);
 use warnings;
 use strict;
@@ -56,7 +56,7 @@ use Carp qw/croak carp confess cluck/;
 use Scalar::Util qw/looks_like_number blessed reftype/;
 use Unicode::UTF8 qw/decode_utf8 valid_utf8/;
 use B;
-our $VERSION = '0.28_03';
+our $VERSION = '0.28_04';
 
 # http://stackoverflow.com/questions/1185822/how-do-i-create-or-test-for-nan-or-infinity-in-perl#1185828
 
@@ -634,15 +634,16 @@ sub JSON::Create::PP::sort
     $jc->{_sort} = !! $onoff;
 }
 
+sub set
+{
+    # This is pure Perl in JSON::Create.
+    JSON::Create::set (@_);
+}
+
 sub cmp
 {
     my ($jc, $cmp) = @_;
     $jc->{cmp} = $cmp;
-}
-
-sub cmp_ok
-{
-    return 1;
 }
 
 1;
