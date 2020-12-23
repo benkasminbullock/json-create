@@ -28,3 +28,5 @@ MYMETA..*
 ^bench\..*$
 # Author tests can be downloaded from github.
 ^xt/.*$
+^test-qsort-r\.c$
+^test-qsort-r$

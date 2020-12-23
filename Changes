@@ -1,8 +1,6 @@
-0.28_04 2020-12-23
+0.28_05 2020-12-24
 * Use the qsort_r from FreeBSD source code instead of rooting around
 * Add "set" and options in new.
-
-0.28_03 2020-12-22
 * Add sorting of indented output by key
 * Add user-defined sort
 

@@ -20,3 +20,4 @@ unicode.[ch]
 MANIFEST
 makeitfile
 bench.*
+test-qsort-r
