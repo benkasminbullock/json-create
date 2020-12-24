@@ -1,8 +1,9 @@
 #!/home/ben/software/install/bin/perl
 
 # The build process of this module relies on lots of modules which are
-# not on CPAN. In order to use continuous integration, copy the local
-# modules into the git repo.
+# not on CPAN. To make it possible for people to use the repository
+# from github, and in order to allow continuous integration, copy the
+# local modules into the git repo.
 
 use warnings;
 use strict;
