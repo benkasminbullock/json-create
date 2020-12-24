@@ -13,10 +13,12 @@ pm_to_blib
 blib/*
 MYMETA.*
 META.*
-ppport.h
+# Allow this to be copied for the github download people
+# ppport.h
 README
 # Copied from my other directory.
-unicode.[ch]
+# Allow this to be copied for the github download people
+# unicode.[ch]
 MANIFEST
 makeitfile
 bench.*
