@@ -10,3 +10,11 @@ perl:
   - "5.16"
 before_install:
   - perl build.pl
+<<<<<<< HEAD
+=======
+branches:
+  only:
+    - copy-stuff
+
+
+>>>>>>> 8133b7e (Specify branch)
