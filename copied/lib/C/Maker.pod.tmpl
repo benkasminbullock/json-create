@@ -1,0 +1,182 @@
+[% start_year = 2012 %]
+=head1 NAME
+
+C::Maker - make a C file using some conventions
+
+=head1 SYNOPSIS
+
+Make F<tasty.c> from F<tasty.c.in>:
+
+    use C::Maker ':all';
+    make_c_file ('tasty');
+
+=head1 VERSION
+
+This documents [% info.colon %] version [% info.version %]
+corresponding to git commit [% commit.commit %] released on [%
+commit.date %].
+
+=head1 DESCRIPTION
+
+This converts input in a certain format into C. The input program
+needs to follow the conventions described under L</FORMAT>.
+
+=head1 FUNCTIONS
+
+=head2 make_c_file
+
+    make_c_file ($orig_name_space, $dir);
+
+Make a C file called C<$orig_name_space.c> from a file called
+C<$orig_name_space.c.in>, which is in directory C<$dir>.
+
+C<$dir> is optional. If it is omitted, the current working directory
+is used.
+
+The status section should look like this:
+
+    /* statuses:
+
+    status: something_went_wrong
+    %%description:
+    Too bad, you scratched.
+    %%
+
+    status: another_thing
+
+    */
+
+The right hand side of each "status:" must be a valid C word.
+
+The description part is optional. If no description is supplied,
+status "oh_no" will get description "oh no" and so on.
+
+=head2 make_header
+
+    make_header (%inputs);
+
+%inputs contains options as follows:
+
+=over 
+
+=item nostatic
+
+    make_header (
+        nostatic => 1,
+    );
+
+If this is true, the STATIC feature is turned off so that functions
+which are marked as static ones using STATIC are not
+
+=item name_space
+
+=item source
+
+=back
+
+=head1 FORMAT
+
+=head2 default_statuses
+
+These are the default statuses which every program has. Each status is
+prefixed.
+
+=over
+
+=item ok
+
+This status means successful completion.
+
+=item memory_failure
+
+This status means that C<malloc> and company returned a NULL value.
+
+=back
+
+=head2 C function declaration
+
+=over
+
+=item FUNC
+
+This suffix is changed in to the function.
+
+    FUNC(f) (x)
+    {
+        OK;
+    }
+
+=item STATIC
+
+This suffix makes the function private
+
+    STATIC FUNC(monkey) (x)
+
+=item OK
+
+This macro returns the OK status.
+
+    FUNC(f) (x)
+    {
+        OK;
+    }
+
+=item CALL
+
+Call a function within this name space.
+
+    FUNC(a)(x)
+    {
+         OK;
+    }
+
+    FUNC(b)(y)
+    {
+         CALL(a(z));
+    }
+
+=item MESSAGE(format,...)
+
+Print a message, if the macro VERBOSE is defined.
+
+=item FAIL (test, status)
+
+If test is true, return status from the function.
+
+    FUNC(a)(x)
+    {
+        FAIL(x==0, null_pointer);
+        OK;
+    }
+
+=item FAIL_MSG (test, status, format, ...)
+
+If test is true, print a message and return C<status> from the function.
+
+    FUNC(a)(x)
+    {
+        FAIL_MSG(x==0, null_pointer, "X is a null pointer");
+        OK;
+    }
+
+=back
+
+=head1 DEPENDENCIES
+
+=over
+
+=item L<C::Utility>
+
+=item L<Template>
+
+=item L<File::Slurper>
+
+=item L<Table::Readable>
+
+=item L<C::Tokenize>
+
+=back
+
+=head1 STATUS
+
+Private module, not for distribution.
