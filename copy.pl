@@ -11,6 +11,8 @@ use utf8;
 use FindBin '$Bin';
 use Sys::Hostname;
 use File::Slurper 'read_text';
+
+use Deploy qw!copy_those_files do_system!;
 my $host = hostname ();
 if ($host ne 'mikan') {
     exit;
@@ -36,62 +38,8 @@ do_system ("cd $copied || exit;rm -rf ./lib", $verbose);
 do_system ("mkdir -p $lib", $verbose);
 for my $dir (@libs) {
     die unless -d $dir;
-    copy_those_files ($dir, $verbose);
+    copy_those_files ($dir, $lib, $verbose);
 }
 #do_system ("git add $lib; git commit -m 'copied files'", $verbose);
 exit;
 
-sub copy_those_files
-{
-    my ($dir, $verbose) = @_;
-    my $files = `cd $dir/lib; find . -name "*"`;
-    my @files = split /\n/, $files;
-    @files = grep !/\.pod(\.tmpl)?$/, @files;
-    @files = grep !m!(/|^\.+)$!, @files;
-    @files = grep !m!\.~[0-9+]~!, @files;
-    @files = map {s!^\./!!r} @files;
-    print "@files\n";
-
-    for my $file (@files) {
-#	print "$file\n";
-#	next;
-	my $infile = "$dir/lib/$file";
-	my $ofile = "$lib/$file";
-	if (-d "$dir/lib/$file") {
-	    do_system ("mkdir -p $ofile", $verbose);
-	    next;
-	}
-	if (-f $ofile) {
-	    chmod 0644, $ofile or die $!;
-	}
-	if ($verbose) {
-	    print "Copying $infile to $ofile.\n";
-	}
-	my $text = read_text ($infile);
-	open my $out, ">:encoding(utf8)", $ofile or die "Can't open $ofile: $!";
-	if ($file =~ /\.pm$/) {
-	    if ($verbose) {
-		print "Adding header.\n";
-	    }
-	    print $out <<EOF;
-# Copied from $dir/lib/$file
-EOF
-	}
-	print $out $text;
-	close $out or die $!;
-	chmod 0444, $ofile;
-    }
-}
-
-
-sub do_system
-{
-    my ($command, $verbose) = @_;
-    if ($verbose) {
-	print "$command\n";
-    }
-    my $status = system ($command);
-    if ($status != 0) {
-	die "Error doing '$command'";
-    }
-}
