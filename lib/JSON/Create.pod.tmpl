@@ -190,7 +190,7 @@ see('replace_bad_utf8') %]. (For full details of the corner cases, see
 L</UNICODE HANDLING>.)
 
 Some whitespace and control characters must be also escaped for the
-output to be valid JSON. (See L</RFC 7159>.) 
+output to be valid JSON. (See L</RFC 8259>.) 
 
 In addition to this, L</create_json_strict> or the L</strict> option
 reject inputs containing non-ASCII bytes (bytes with values of from
@@ -222,7 +222,7 @@ This escaping is necessary for JavaScript because of a clash between
 the JSON standard and the JavaScript (ECMAScript) standard. The
 characters U+2028 ("LINE SEPARATOR" in the Unicode standard) and
 U+2029 ("PARAGRAPH SEPARATOR" in the Unicode standard) are valid
-within JSON, as defined by L</RFC 7159>, but invalid within JavaScript
+within JSON, as defined by L</RFC 8259>, but invalid within JavaScript
 strings, as defined by the ECMA standard (See ECMA Standard ECMA-262,
 "ECMAScript Language Specification", 3rd Edition, section 7.3 "Line
 Terminators").
@@ -254,7 +254,7 @@ C<"%g">, like
 [% see('set_fformat') %]
 
 JSON does not allow NaN or infinity as bare values. From page 6 of
-L</RFC 7159>:
+L</RFC 8259>:
 
 =over
 
@@ -1120,7 +1120,11 @@ the speed of the module.
 
 This is a backup module for JSON::Create in pure Perl.
 
-=back
+=item RFC 8259
+
+L<RFC 8259 "The JavaScript Object Notation (JSON) Data Interchange Format"|https://www.ietf.org/rfc/rfc8259.txt>
+
+=item L<JSON::Parse/SEE ALSO>
 
 Please refer to L<JSON::Parse/SEE ALSO> for information on the
 specifications for JSON and a list of other CPAN modules for JSON.
