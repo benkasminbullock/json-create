@@ -56,7 +56,7 @@ use Carp qw/croak carp confess cluck/;
 use Scalar::Util qw/looks_like_number blessed reftype/;
 use Unicode::UTF8 qw/decode_utf8 valid_utf8/;
 use B;
-our $VERSION = '0.29';
+our $VERSION = '0.29_01';
 
 # http://stackoverflow.com/questions/1185822/how-do-i-create-or-test-for-nan-or-infinity-in-perl#1185828
 
@@ -515,15 +515,6 @@ sub non_finite_handler
     return undef;
 }
 
-sub obj
-{
-    my ($jc, %things) = @_;
-    my $handlers = $jc->get_handlers ();
-    for my $k (keys %things) {
-	$handlers->{$k} = $things{$k};
-    }
-}
-
 sub bool
 {
     my ($jc, @list) = @_;
@@ -533,27 +524,55 @@ sub bool
     }
 }
 
+sub cmp
+{
+    my ($jc, $cmp) = @_;
+    $jc->{cmp} = $cmp;
+}
+
 sub escape_slash
 {
     my ($jc, $onoff) = @_;
     $jc->{_escape_slash} = !! $onoff;
 }
 
-sub set_fformat_unsafe
+sub fatal_errors
 {
-    my ($jc, $fformat) = @_;
-    if ($fformat) {
-	$jc->{_fformat} = $fformat;
-    }
-    else {
-	delete $jc->{_fformat};
+    my ($jc, $onoff) = @_;
+    $jc->{_fatal_errors} = !! $onoff;
+}
+
+sub indent
+{
+    my ($jc, $onoff) = @_;
+    $jc->{_indent} = !! $onoff;
+}
+
+sub no_javascript_safe
+{
+    my ($jc, $onoff) = @_;
+    $jc->{_no_javascript_safe} = !! $onoff;
+}
+
+sub obj
+{
+    my ($jc, %things) = @_;
+    my $handlers = $jc->get_handlers ();
+    for my $k (keys %things) {
+	$handlers->{$k} = $things{$k};
     }
 }
 
-sub set_fformat
+sub obj_handler
 {
-    my ($jc, $fformat) = @_;
-    JSON::Create::set_fformat ($jc, $fformat);
+    my ($jc, $handler) = @_;
+    $jc->{_obj_handler} = $handler;
+}
+
+sub replace_bad_utf8
+{
+    my ($jc, $onoff) = @_;
+    $jc->{_replace_bad_utf8} = !! $onoff;
 }
 
 sub run
@@ -569,63 +588,27 @@ sub run
     return $jc->{output};
 }
 
-sub type_handler
+sub set_fformat
 {
-    my ($jc, $handler) = @_;
-    $jc->{_type_handler} = $handler;
+    my ($jc, $fformat) = @_;
+    JSON::Create::set_fformat ($jc, $fformat);
 }
 
-sub obj_handler
+sub set_fformat_unsafe
 {
-    my ($jc, $handler) = @_;
-    $jc->{_obj_handler} = $handler;
-}
-
-sub no_javascript_safe
-{
-    my ($jc, $onoff) = @_;
-    $jc->{_no_javascript_safe} = !! $onoff;
+    my ($jc, $fformat) = @_;
+    if ($fformat) {
+	$jc->{_fformat} = $fformat;
+    }
+    else {
+	delete $jc->{_fformat};
+    }
 }
 
 sub set_validate
 {
     my ($jc, $onoff) = @_;
     $jc->{_validate} = !! $onoff;
-}
-
-sub unicode_escape_all
-{
-    my ($jc, $onoff) = @_;
-    $jc->{_unicode_escape_all} = !! $onoff;
-}
-
-sub unicode_upper
-{
-    my ($jc, $onoff) = @_;
-    $jc->{_unicode_upper} = !! $onoff;
-}
-
-sub fatal_errors
-{
-    my ($jc, $onoff) = @_;
-    $jc->{_fatal_errors} = !! $onoff;
-}
-
-sub replace_bad_utf8
-{
-    my ($jc, $onoff) = @_;
-    $jc->{_replace_bad_utf8} = !! $onoff;
-}
-
-sub validate
-{
-    return JSON::Create::validate (@_);
-}
-
-sub indent
-{
-    my ($jc, $onoff) = @_;
-    $jc->{_indent} = !! $onoff;
 }
 
 sub JSON::Create::PP::sort
@@ -640,10 +623,33 @@ sub set
     JSON::Create::set (@_);
 }
 
-sub cmp
+sub type_handler
 {
-    my ($jc, $cmp) = @_;
-    $jc->{cmp} = $cmp;
+    my ($jc, $handler) = @_;
+    $jc->{_type_handler} = $handler;
+}
+
+sub unicode_escape_all
+{
+    my ($jc, $onoff) = @_;
+    $jc->{_unicode_escape_all} = !! $onoff;
+}
+
+sub unicode_upper
+{
+    my ($jc, $onoff) = @_;
+    $jc->{_unicode_upper} = !! $onoff;
+}
+
+sub validate
+{
+    return JSON::Create::validate (@_);
+}
+
+sub write_json
+{
+    # Parent module function is pure perl.
+    JSON::Create::write_json (@_);
 }
 
 1;

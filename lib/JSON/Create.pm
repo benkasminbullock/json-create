@@ -1,13 +1,13 @@
 package JSON::Create;
 require Exporter;
 @ISA = qw(Exporter);
-@EXPORT_OK = qw/create_json create_json_strict/;
+@EXPORT_OK = qw/create_json create_json_strict write_json/;
 %EXPORT_TAGS = (
     all => \@EXPORT_OK,
 );
 use warnings;
 use strict;
-our $VERSION = '0.29';
+our $VERSION = '0.29_01';
 
 # Are we running as XS?
 
@@ -198,6 +198,21 @@ sub create_json_strict
     $args{strict} = 1;
     my $jc = JSON::Create->new (%args);
     return $jc->run ($obj);
+}
+
+sub write_json
+{
+    my ($filename, $obj, %options) = @_;
+    my $json = create_json ($obj, %options);
+    # create_json's output is either ASCII or it is marked as utf8, so
+    # the following is always safe.
+    my $encoding = ':encoding(utf8)';
+    if ($options{downgrade_utf8}) {
+	$encoding = ':raw';
+    }
+    open my $out, ">$encoding", $filename or die $!;
+    print $out $json;
+    close $out or die $!;
 }
 
 1;

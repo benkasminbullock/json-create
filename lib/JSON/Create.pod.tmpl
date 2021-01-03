@@ -131,6 +131,16 @@ inputs. See L</strict> for details. It is effectively identical to
 
 [% fsince('0.20') %]
 
+=head2 write_json
+
+     write_json ('file.json', \%hash, %options);
+
+Write the contents of C<%hash> (or an array reference or scalar) to
+the file specified in the first argument. This takes all the same
+arguments as L</create_json>, L</new> and L</set>.
+
+[% fsince('0.30') %]
+
 =head1 CONVERSIONS
 
 This section details what conversions are applied to the various
