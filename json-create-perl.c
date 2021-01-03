@@ -1886,16 +1886,18 @@ set_type_handler (json_create_t * jc, SV * th)
 /* Save time and money by using strlen. This is known as "premature
    optimization". */
 
-#define CMP(x) (strlen(#x) == (size_t) key_len && strcmp(#x, key) == 0)
+#define CMP(x) (strlen(#x) == (size_t) key_len && strncmp(#x, key, key_len) == 0)
 
-#define BOOL(x)					\
-    if (CMP(x)) {				\
-	jc->x = SvTRUE (value) ? 1 : 0;		\
+#define BOOL(x)								\
+    if (CMP(x)) {							\
+	jc->x = SvTRUE (value) ? 1 : 0;					\
+	return;								\
     }
 
 #define HANDLER(x)				\
     if (CMP(x)) {				\
 	set_ ## x ## _handler (jc, value);	\
+	return;					\
     }
 
 static void

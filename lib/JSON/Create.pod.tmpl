@@ -158,9 +158,6 @@ Nested hashes are recursively followed:
 
 [% example('nested-hash') %]
 
-Notice that the order of array elements is not affected by the
-L</sort> option.
-
 =head2 Arrays
 
 Arrays are converted to JSON arrays. The order of elements of the
@@ -1055,33 +1052,15 @@ L</non_finite_handler>.
 
 =head1 PERFORMANCE
 
-This module is fairly new on the scene, so speed is not a key issue
-until the module is demonstrably producing correct outputs.
-
-However, due to user interest, there is a benchmarking script in
-F<bench/bench.pl> which compares the performance of the module with
-L<JSON::XS> and L<Cpanel::JSON::XS>. Outputs look like this, where the
-"improve" column is the improvement in speed of the fastest module
-compared to the slowest:
+There is a benchmarking script in F<bench/bench.pl> which compares the
+performance of the module with L<JSON::XS> and
+L<Cpanel::JSON::XS>. Outputs look like this, where the "improve"
+column is the improvement in speed of the fastest module compared to
+the slowest:
 
 [% INCLUDE "/home/ben/projects/json-create/bench/bench.output" | indent (4) %]
 
-This only compares a few simple cases in which the output is
-demonstrably correct. Also, at least on my computer, the numbers seem
-to vary wildly from one test to another. The benchmarking script also
-contains commented out code to test against L<JSON::DWIW> if you are
-interested.
-
-Please note that the numbers for the floating point results are at the
-moment unfairly skewed in favour of JSON::Create, because whereas
-JSON::XS prints out the full available precision of the number (which
-is about equivalent to printing with a format C<%.15g>), JSON::Create
-prints only six digits of precision, creating a false impression of
-greater speed. Work on this is currently in progress.
-
 =head1 BUGS
-
-There is currently no facility to add whitespace to the output JSON.
 
 There is currently no way to delete object handlers set via L</obj>
 from a JSON::Create object.
@@ -1091,9 +1070,6 @@ serialization.
 
 No warning is printed when the user uses clashing methods like
 L</bool> and L</obj_handler>.
-
-Features added since version 0.16 of the module are not yet
-implemented in JSON::Create::PP.
 
 There is a bug in JSON::Create::PP's handling of non-integer numbers.
 
@@ -1133,26 +1109,12 @@ variables> for all the details.
 Arguments to L</create_json> and L</create_json_strict>, and the
 methods L</set>, L</sort> and L</cmp> were added in version 0.29.
 
+Version 0.30 rewrote L</set> and related routines in XS and increased
+the speed of the module.
+
 =head1 SEE ALSO
 
 =over
-
-=item RFC 7159
-
-JSON is specified in L<RFC 7159 "The application/json Media Type for
-JavaScript Object Notation
-(JSON)"|http://www.ietf.org/rfc/rfc7159.txt>.
-
-=item json.org
-
-L<http://json.org> is the website for JSON, authored by Douglas
-Crockford.
-
-=item JSON::Parse
-
-JSON::Create is a companion module to the same author's
-L<JSON::Parse>. Please see that module's documentation for a summary
-of JSON modules on CPAN (under "SEE ALSO").
 
 =item L<JSON::Create::PP>
 
@@ -1160,13 +1122,15 @@ This is a backup module for JSON::Create in pure Perl.
 
 =back
 
+Please refer to L<JSON::Parse/SEE ALSO> for information on the
+specifications for JSON and a list of other CPAN modules for JSON.
+
+=back
+
 =head2 Installing from the github repository
 
-Experimentally, it is possible to install this module from Github
-using the C<copy-stuff> branch of the repository. You will also need
-to install L<Template> and possibly some other modules, and you will
-probably also need to manually copy the file F<lib/JSON/Create.pod> to
-F<lib/JSON/Create.pod.tmpl>.
+Experimentally, it is possible to install this module from Github. You
+will also need to install L<Template> and possibly some other modules.
 
 =head2 Blog posts
 
