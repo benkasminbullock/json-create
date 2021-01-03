@@ -1,8 +1,9 @@
-0.29_02 2021-01-03
+0.30 2021-01-04
 
 * Add write_json method based on File::JSON::Slurper
 * Change create_json and the set method to be in XS for better
   performance
+* Update documentation
 
 0.29 2020-12-24
 * Allow options in new, create_json, and create_json_strict

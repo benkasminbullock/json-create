@@ -7,7 +7,7 @@ require Exporter;
 );
 use warnings;
 use strict;
-our $VERSION = '0.29_02';
+our $VERSION = '0.30';
 
 # Are we running as XS?
 
