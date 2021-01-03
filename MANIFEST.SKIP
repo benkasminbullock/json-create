@@ -30,3 +30,4 @@ MYMETA..*
 ^xt/.*$
 ^copied/.*$
 ^\.(github|travis).*$
+^versionup\.pl$

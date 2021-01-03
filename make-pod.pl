@@ -27,8 +27,9 @@ my $input = "$Bin/lib/JSON/$pod.tmpl";
 my $output = "$Bin/lib/JSON/$pod";
 
 my $pm = "$Bin/lib/JSON/$mod.pm";
+my $c = "$Bin/json-create-perl.c";
 
-my $setvar = setvar ($pm);
+my $setvar = setvar ($c);
 
 # Template toolkit variable holder
 
@@ -76,15 +77,15 @@ sub setvar
     my ($pm) = @_;
     my $text = read_text ($pm);
     my $set = $text;
-    $set =~ s/^.*(sub\s+set)/$1/gs;
+    $set =~ s/^.*(static\s+void\s+json_create_set)/$1/gs;
     $set =~ s/^}.*$//gsm;
     my @setvar;
-    while ($set =~ m!if \(\$k eq '(\w+)'!g) {
+    while ($set =~ m!(?:BOOL|HANDLER|CMP)\s*\((.*?)\)!g) {
 	push @setvar, $1;
     }
     my @s = sort @setvar;
-    for my $i (0..$#s) {
-	die "Unsorted set variable $setvar[$i]" unless $s[$i] eq $setvar[$i];
-    }
+    # for my $i (0..$#s) {
+    # 	die "Unsorted set variable $setvar[$i]" unless $s[$i] eq $setvar[$i];
+    # }
     return \@setvar;
 }

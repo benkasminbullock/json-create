@@ -1,4 +1,4 @@
-0.29_01 2021-01-03
+0.29_02 2021-01-03
 
 * Add write_json method based on File::JSON::Slurper
 
