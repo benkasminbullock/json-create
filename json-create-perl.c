@@ -1895,7 +1895,7 @@ set_type_handler (json_create_t * jc, SV * th)
     }
 
 #define HANDLER(x)				\
-    if (CMP(x)) {				\
+    if (CMP(x ## _handler)) {			\
 	set_ ## x ## _handler (jc, value);	\
 	return;					\
     }

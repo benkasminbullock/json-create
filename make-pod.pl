@@ -80,12 +80,16 @@ sub setvar
     $set =~ s/^.*(static\s+void\s+json_create_set)/$1/gs;
     $set =~ s/^}.*$//gsm;
     my @setvar;
-    while ($set =~ m!(?:BOOL|HANDLER|CMP)\s*\((.*?)\)!g) {
-	push @setvar, $1;
+    while ($set =~ m!(BOOL|HANDLER|CMP)\s*\((.*?)\)!g) {
+	my $value = $2;
+	if ($1 eq 'HANDLER') {
+	    $value .= '_handler';
+	}
+	push @setvar, $value;
     }
     my @s = sort @setvar;
     # for my $i (0..$#s) {
     # 	die "Unsorted set variable $setvar[$i]" unless $s[$i] eq $setvar[$i];
     # }
-    return \@setvar;
+    return \@s;
 }
