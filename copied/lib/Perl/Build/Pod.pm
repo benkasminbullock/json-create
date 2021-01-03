@@ -1,36 +1,41 @@
 # Copied from /home/ben/projects/perl-build/lib/Perl/Build/Pod.pm
 package Perl::Build::Pod;
-use Perl::Build qw/get_info get_commit/;
 use parent Exporter;
 our @EXPORT_OK = qw/
-		       make_pod
 		       extract_vars
 		       get_dep_section
 		       make_examples
+		       make_pod
 		       pbtmpl
 		       pod_checker
 		       pod_encoding_ok
+		       pod_exports
 		       pod_link_checker
 		       pod_no_cut
+		       simple_pod
 		       xtidy
-		       pod_exports
 		   /;
 our %EXPORT_TAGS = (all => \@EXPORT_OK);
+
 use warnings;
 use strict;
 use utf8;
-use FindBin '$Bin';
+
 use Carp;
-use Pod::Checker;
 use File::Slurper qw/read_text read_lines/;
+use FindBin '$Bin';
+use Getopt::Long;
 use JSON::Create;
-use Deploy qw/do_system older/;
+use Pod::Checker;
 use Pod::Select;
 use Test::Pod;
 
+use Deploy qw/do_system older/;
+use Perl::Build qw/get_info get_commit/;
+
 =head1 NAME
 
-Pearl::Build::Pod - pod support for Pearl::Build
+Perl::Build::Pod - pod support for Perl::Build
 
 =head1 FUNCTIONS
 
@@ -44,7 +49,11 @@ Returns the directory where templates may be found.
 
 sub pbtmpl
 {
-    return '/home/ben/projects/perl-build/lib/Perl/Build/templates';
+    my $self = __FILE__;
+    my $dir = $self;
+    $self =~ s!Pod.pm!templates!;
+    die "Can't find template directory" unless -d $self && -f "$self/author";
+    return $self;
 }
 
 =head2 xtidy
@@ -65,11 +74,10 @@ sub xtidy
 
     $text =~ s/^#!.*$//m;
 
-    # Remove sobvious.
+    # Remove obvious things.
 
     $text =~ s/use\s+(strict|warnings);\s+//g;
     $text =~ s/^\s*binmode\s+STDOUT.*?utf8.*\n//gm;
-#    $text =~ s/use\s+JSON::Parse.*?;\s+//;
 
     # Replace tabs with spaces.
 
@@ -242,16 +250,6 @@ sub unlikely_link
 	    return "URL without http:// etc?";
 	}
     }
-
-    # not sure what this was doing
-    # if ($link =~ m!^.+/!) {
-    # 	if ($link !~ m!^\w+::.*/.*$!) {
-    # 	    if ($link !~ /mikan/) {
-    # 		return "Unexpected slash";
-    # 	    }
-    # 	}
-    # }
-    # Allow it
     return undef;
 }
 
@@ -275,10 +273,20 @@ sub make_examples
     my ($dir, $verbose, $force) = @_;
     my @examples = <$dir/*.pl>;
     for my $example (@examples) {
+	my @includes;
+	my $xsdir = "$dir/../blib/arch";
+	if (-d $xsdir) {
+	    push @includes, "$dir/../blib/lib";
+	    push @includes, $xsdir;
+	}
+	else {
+	    push @includes, "$dir/../lib";
+	}
+	@includes = map {s!$_!-I$_!; $_} @includes;
 	my $output = $example;
 	$output =~ s/\.pl$/-out.txt/;
-	if (older ($output, $example) || $force) {
-	    do_system ("perl -I$Bin/blib/lib -I$Bin/blib/arch $example > $output 2>&1", $verbose);
+	if (! -f $output || older ($output, $example) || $force) {
+	    do_system ("perl @includes $example > $output 2>&1", $verbose);
 	}
     }
 }
@@ -409,14 +417,21 @@ sub pod_exports
     return $ok;
 }
 
-use FindBin '$Bin';
+# Although this is a module, this function uses $Bin because it is
+# normally run by a script called "make-pod.pl" in the top directory
+# of the distribution.
 
 sub make_pod
 {
     my (%options) = @_;
     my $verbose = $options{verbose};
+    my $base = $options{base};
+    if (! $base) {
+	warn "Using \$Bin as base was not specified";
+	$base = $Bin;
+    }
     my %pbv = (
-	base => $Bin,
+	base => $base,
 	verbose => $verbose,
     );
     my $info = get_info (%pbv);
@@ -433,13 +448,13 @@ sub make_pod
 	info => $info,
 	commit => $commit,
     );
-
+    my $exdir = "$base/examples";
     my $tt = Template->new (
 	ABSOLUTE => 1,
 	INCLUDE_PATH => [
 	    $Bin,
 	    pbtmpl (),
-	    "$Bin/examples",
+	    $exdir,
 	],
 	ENCODING => 'UTF8',
 	FILTERS => {
@@ -450,20 +465,36 @@ sub make_pod
 	},
 	STRICT => 1,
     );
+    if (! $options{no_make_examples}) {
 
-    my @examples = <$Bin/examples/*.pl>;
-    for my $example (@examples) {
-	my $output = $example;
-	$output =~ s/\.pl$/-out.txt/;
-	if (older ($output, $example) || $options{force}) {
-	    do_system ("perl -I$Bin/blib/lib -I$Bin/blib/arch $example > $output 2>&1", $verbose);
+	make_examples ($exdir, $options{verbose}, $options{force});
+	if (-f $output) {
+	    chmod 0644, $output;
 	}
     }
-
-    chmod 0644, $output;
     $tt->process ($input, \%vars, $output, binmode => 'utf8')
-    or die '' . $tt->error ();
+        or die '' . $tt->error ();
     chmod 0444, $output;
+}
+
+sub simple_pod
+{
+    my (%options) = @_;
+    my $ok = GetOptions (
+	'force' => \my $force,
+	'verbose' => \my $verbose,
+    );
+    if (! $ok) {
+	usage ();
+	exit;
+    }
+    if (! defined $options{force}) {
+	$options{force} = $force;
+    }
+    if (! defined $options{verbose}) {
+	$options{verbose} = $verbose;
+    }
+    make_pod (%options);
 }
 
 1;

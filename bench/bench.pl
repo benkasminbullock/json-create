@@ -20,7 +20,7 @@ use lib '/home/ben/projects/json-create/blib/arch';
 use JSON::Create 'create_json';
 use JSON::XS;
 use Cpanel::JSON::XS;
-use JSON::DWIW;
+#use JSON::DWIW;
 
 # Number of repetitions. No matter how large this is made, the results
 # always vary wildly from run to run.

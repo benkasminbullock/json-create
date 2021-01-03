@@ -49,6 +49,11 @@ sub no_uncommited_changes
     system ("chdir $dir;git diff > $tempfile");
     my $ok = ! -s $tempfile;
     $tempfile->remove ();
+    if ($ok) {
+	system ("chdir $dir;git diff --cached > $tempfile");
+	$ok = ! -s $tempfile;
+	$tempfile->remove ();
+    }
     return $ok;
 }
 

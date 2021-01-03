@@ -6,7 +6,7 @@ objs: [% objs %]
 
 [% IF ! no_clean %]
 clean:
-	-rm -f [% clean %] makeitfile chuggles
+	rm -f [% clean %] makeitfile chuggles
 [% END %]
 # Local variables:
 # mode: makefile
