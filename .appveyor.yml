@@ -1,0 +1,24 @@
+skip_tags: true
+
+cache:
+  - C:\strawberry
+
+install:
+  - if not exist "C:\strawberry" cinst --allow-empty-checksums strawberryperl
+  - set PATH=C:\strawberry\perl\bin;C:\strawberry\perl\site\bin;C:\strawberry\c\bin;%PATH%
+  - cd C:\projects\%APPVEYOR_PROJECT_NAME%
+  - cpanm C::Tokenize
+  - cpanm C::Utility
+  - cpanm File::Slurper
+  - cpanm IPC::Run3
+  - cpanm JSON::Create
+  - cpanm JSON::Parse
+  - cpanm Path::Tiny
+  - cpanm Pod::Select
+  - cpanm Table::Readable
+  - cpanm Template
+  - cpanm Test::Pod
+  - cpanm --verbose --installdeps .
+
+build_script:
+  - perl build.pl
