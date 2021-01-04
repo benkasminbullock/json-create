@@ -21,4 +21,4 @@ install:
   - cpanm --verbose --installdeps .
 
 build_script:
-  - perl build.pl
+  - CI=1 perl build.pl

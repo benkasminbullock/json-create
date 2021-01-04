@@ -17,8 +17,7 @@ META.*
 # ppport.h
 README
 # Copied from my other directory.
-# Allow this to be copied for the github download people
-# unicode.[ch]
+unicode.[ch]
 MANIFEST
 makeitfile
 bench.*
