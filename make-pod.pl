@@ -3,6 +3,7 @@ use warnings;
 use strict;
 use Template;
 use FindBin '$Bin';
+use lib "$Bin/copied/lib";
 use Perl::Build qw/get_version get_info get_commit/;
 use Perl::Build::Pod ':all';
 use Getopt::Long;
