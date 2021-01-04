@@ -1,0 +1,21 @@
+{
+	"CuriousGeorge":{},
+	"FunkyKong":0,
+	"KingKong":1,
+	"PeterTork":"Monkees"
+}
+
+{
+	"CuriousGeorge":null,
+	"FunkyKong":false,
+	"KingKong":true,
+	"PeterTork":"Monkees"
+}
+
+{
+	"CuriousGeorge":{},
+	"FunkyKong":0,
+	"KingKong":1,
+	"PeterTork":"Monkees"
+}
+

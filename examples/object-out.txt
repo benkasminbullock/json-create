@@ -1,0 +1,2 @@
+Ba::Bi::Bu::Be::Bo=SCALAR(0x209a89e0)
+{"babibubebo":"lion"}

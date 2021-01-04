@@ -1,0 +1,4 @@
+{"x":"\u001f\b\u0000\u0000\u0000\u0000\u0000\u0000\u0003{ÜØý¸±÷qcÿãÆ\u001b'\u0003\u0000£ ³\u0012\u000f\u0000\u0000\u0000","y":"さしすせそ"}
+Invalid UTF-8 at /usr/home/ben/projects/json-create/blib/lib/JSON/Create.pm line 192.
+Use of uninitialized value in print at /usr/home/ben/projects/json-create/examples/json-unicode-gzip-bytes.pl line 15.
+

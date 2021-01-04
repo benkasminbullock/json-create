@@ -1,0 +1,5 @@
+"赤ブöＡↂϪ"
+"赤ブöＡↂϪ"
+Invalid UTF-8 at /usr/home/ben/projects/json-create/blib/lib/JSON/Create.pm line 192.
+Use of uninitialized value in print at /usr/home/ben/projects/json-create/examples/valid-chars.pl line 12.
+

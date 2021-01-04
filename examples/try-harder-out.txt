@@ -1,0 +1,7 @@
+Jsonifying Path::Tiny with 'TO_JSON'.
+Stringifying Mojo::URL with 'to_string'.
+{
+	"path":"/home/ben/software/install/bin/perl",
+	"url":"http://example.com:3000/foo?foo=bar#23"
+}
+

@@ -1,0 +1,15 @@
+{
+	"code":{
+		"type":"CODE",
+		"value":"강남스타일"
+	},
+	"glob":{
+		"type":"GLOB",
+		"value":"GLOB(0x209a82a0)"
+	},
+	"regex":{
+		"type":"Regexp",
+		"value":"(?^:.*)"
+	}
+}
+

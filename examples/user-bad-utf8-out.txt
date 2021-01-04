@@ -1,0 +1,2 @@
+Invalid UTF-8 from user routine at /usr/home/ben/projects/json-create/examples/user-bad-utf8.pl line 11.
+Use of uninitialized value in print at /usr/home/ben/projects/json-create/examples/user-bad-utf8.pl line 11.

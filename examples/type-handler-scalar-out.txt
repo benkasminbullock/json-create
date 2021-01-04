@@ -1,0 +1,4 @@
+Input's type cannot be serialized to JSON at /usr/home/ben/projects/json-create/examples/type-handler-scalar.pl line 7.
+Use of uninitialized value in print at /usr/home/ben/projects/json-create/examples/type-handler-scalar.pl line 7.
+Before: 
+After: 1

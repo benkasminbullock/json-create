@@ -1,0 +1,2 @@
+{"curry":"nan"}
+{"curry":null}

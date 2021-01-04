@@ -1,0 +1,2 @@
+Non-finite number in input at /usr/home/ben/projects/json-create/blib/lib/JSON/Create.pm line 200.
+Use of uninitialized value in print at /usr/home/ben/projects/json-create/examples/strict-non-finite.pl line 5.

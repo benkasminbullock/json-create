@@ -1,0 +1,11 @@
+{
+	"lifeforms":{
+		"elephant":"🐘",
+		"goat":"🐐",
+		"Grape":"🍇",
+		"Kingkong":"🦍",
+		"melon":"🍈",
+		"siliconbased":"❄",
+		"Watermelon":"🍉"
+	}
+}

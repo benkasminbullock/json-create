@@ -1,0 +1,2 @@
+Fatal error: Invalid UTF-8 at /usr/home/ben/projects/json-create/examples/fatal-errors.pl line 9.
+

@@ -1,0 +1,23 @@
+{
+	"cats":[
+		"mocha",
+		"dusty",
+		"milky"
+	],
+	"dogs":[
+		"Tico",
+		"Rocky",
+		"Pinky"
+	],
+	"fruit":{
+		"australia":"orange",
+		"japan":"persimmon",
+		"thai":"pineapple"
+	},
+	"numbers":[
+		1,
+		2,
+		2.5,
+		99.99
+	]
+}

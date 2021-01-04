@@ -1,0 +1,2 @@
+There is no such thing as a funky monkey baby at /usr/home/ben/projects/json-create/examples/exception.pl line 10.
+

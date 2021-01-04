@@ -1,0 +1,2 @@
+{"zilog":{"memory":"64 kbytes"}}
+{"zilog":"I can address as many as 64 kbytes of memory"}
