@@ -130,5 +130,10 @@ sub write_json
     close $out or die $!;
 }
 
+sub create
+{
+    goto &run;
+}
+
 1;
 
