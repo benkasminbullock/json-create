@@ -19,6 +19,7 @@ install:
   - cpanm Template
   - cpanm Test::Pod
   - cpanm --verbose --installdeps .
+  - git clone https://github.com/benkasminbullock/bkb-perl-build.git copied
 
 build_script:
   - SET CI=1
