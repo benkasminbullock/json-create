@@ -31,3 +31,4 @@ MYMETA..*
 ^copied/.*$
 ^\.(github|travis).*$
 ^versionup\.pl$
+^\.(?:travis|appveyor)\.yml$
