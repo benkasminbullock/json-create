@@ -7,7 +7,7 @@ require Exporter;
 );
 use warnings;
 use strict;
-our $VERSION = '0.30';
+our $VERSION = '0.30_01';
 
 # Are we running as XS?
 
@@ -130,9 +130,9 @@ sub write_json
     close $out or die $!;
 }
 
-sub create
+sub run
 {
-    goto &run;
+    goto &create;
 }
 
 1;

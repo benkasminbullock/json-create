@@ -1672,20 +1672,17 @@ json_create_recursively (json_create_t * jc, SV * input)
 	}							\
     }
 
-/* Dog run. */
+/* This is the main routine of JSON::Create, where the JSON is
+   produced from the Perl structure in "input". */
 
 static INLINE SV *
-json_create_run (json_create_t * jc, SV * input)
+json_create_create (json_create_t * jc, SV * input)
 {
     unsigned char buffer[BUFSIZE];
 
     /* Set up all the transient variables for reading. */
 
-    /* "jc.buffer" is dirty here, we have not initialized it, we are
-       just writing to uninitialized stack memory. "jc.length" is the
-       only thing we know is OK at this point. */
     jc->buffer = buffer;
-
     jc->length = 0;
     /* Tell json_create_buffer_fill that it needs to allocate an
        SV. */
@@ -1693,14 +1690,13 @@ json_create_run (json_create_t * jc, SV * input)
     /* Not Unicode. */
     jc->unicode = 0;
 
-    /* Unleash the dogs. */
     FINALCALL (json_create_recursively (jc, input));
-    /* Copy the remaining text in jc's buffer into "jc->output". */
     FINALCALL (json_create_buffer_fill (jc));
 
     if (jc->unicode && ! jc->downgrade_utf8) {
 	if (jc->utf8_dangerous) {
-	    if (is_utf8_string ((U8 *) SvPV_nolen (jc->output), SvCUR (jc->output))) {
+	    if (is_utf8_string ((U8 *) SvPV_nolen (jc->output),
+				SvCUR (jc->output))) {
 		SvUTF8_on (jc->output);
 	    }
 	    else {
@@ -1883,10 +1879,11 @@ set_type_handler (json_create_t * jc, SV * th)
     bump (jc, th);
 }
 
-/* Save time and money by using strlen. This is known as "premature
-   optimization". */
+/* Use the length of the string to eliminate impossible matches before
+   looking at the string's bytes. */
 
-#define CMP(x) (strlen(#x) == (size_t) key_len && strncmp(#x, key, key_len) == 0)
+#define CMP(x) (strlen(#x) == (size_t) key_len && \
+		strncmp(#x, key, key_len) == 0)
 
 #define BOOL(x)								\
     if (CMP(x)) {							\

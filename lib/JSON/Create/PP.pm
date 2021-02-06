@@ -56,7 +56,7 @@ use Carp qw/croak carp confess cluck/;
 use Scalar::Util qw/looks_like_number blessed reftype/;
 use Unicode::UTF8 qw/decode_utf8 valid_utf8/;
 use B;
-our $VERSION = '0.30';
+our $VERSION = '0.30_01';
 
 sub create_json
 {
@@ -576,6 +576,11 @@ sub replace_bad_utf8
 }
 
 sub run
+{
+    goto &create;
+}
+
+sub create
 {
     my ($jc, $input) = @_;
     $jc->{output} = '';
