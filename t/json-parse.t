@@ -25,7 +25,7 @@ my $p = parse_json ($jsonin);
 #$p->{focus} = 'monkey';
 #print Dumper ($p);
 my $jc = JSON::Create->new ();
-my $out = $jc->run ($p);
+my $out = $jc->create ($p);
 #printf ("%d\n", $p->{pocus});
 like ($out, qr/"hocus":true/);
 like ($out, qr/"pocus":false/);
@@ -34,7 +34,7 @@ my $json_array = '[true,false,null]';
 my $q = parse_json ($json_array);
 #delete $q->[1];
 #$q->[1] = "Magical Mystery Tour";
-my $outq = $jc->run ($q);
+my $outq = $jc->create ($q);
 
 is ($outq, $json_array, "in = out");
 done_testing ();

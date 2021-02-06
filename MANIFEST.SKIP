@@ -32,3 +32,5 @@ MYMETA..*
 ^\.(github|travis).*$
 ^versionup\.pl$
 ^\.(?:travis|appveyor)\.yml$
+# Batch editing scripts and throwaways
+^oneoff/.*$
