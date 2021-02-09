@@ -334,16 +334,21 @@ sub create_json_recursively
 	$jc->{output} .= 'null';
 	return undef;
     }
-    my $ref;
-    my $error;
-    if (keys %{$jc->{_handlers}} || $jc->{_obj_handler}) {
-	$ref = ref ($input);
+    my $ref = ref ($input);
+    if ($ref eq 'JSON::Create::Bool') {
+	if ($$input) {
+	    $jc->{output} .= 'true';
+	}
+	else {
+	    $jc->{output} .= 'false';
+	}
+	return;
     }
-    else {
+    if (! keys %{$jc->{_handlers}} && ! $jc->{_obj_handler}) {
+	my $origref = $ref;
 	# Break encapsulation if the user has not supplied handlers.
 	$ref = reftype ($input);
 	if ($ref && $jc->{_strict}) {
-	    my $origref = ref ($input);
 	    if ($ref ne $origref) {
 		return "Object cannot be serialized to JSON: $origref";
 	    }
@@ -374,7 +379,7 @@ sub create_json_recursively
 		    $jc->{output} .= $bool;
 		}
 		else {
-		    $error = create_json_recursively ($jc, $input->{$k});
+		    my $error = create_json_recursively ($jc, $input->{$k});
 		    if ($error) {
 			return $error;
 		    }
@@ -396,7 +401,7 @@ sub create_json_recursively
 		    $jc->{output} .= $bool;
 		}
 		else {
-		    $error = create_json_recursively ($jc, $k);
+		    my $error = create_json_recursively ($jc, $k);
 		    if ($error) {
 			return $error;
 		    }
@@ -412,7 +417,7 @@ sub create_json_recursively
 	    if ($jc->{_strict}) {
 		return "Input's type cannot be serialized to JSON";
 	    }
-	    $error = $jc->create_json_recursively ($$input);
+	    my $error = $jc->create_json_recursively ($$input);
 	    if ($error) {
 		return $error;
 	    }
@@ -437,7 +442,7 @@ sub create_json_recursively
 			    }
 			}
 			elsif (ref ($handler) eq 'CODE') {
-			    $error = $jc->call_to_json ($handler, $input);
+			    my $error = $jc->call_to_json ($handler, $input);
 			    if ($error) {
 				return $error;
 			    }
