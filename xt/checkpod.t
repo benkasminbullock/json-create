@@ -10,7 +10,11 @@ binmode $builder->todo_output,    ":utf8";
 binmode STDOUT, ":encoding(utf8)";
 binmode STDERR, ":encoding(utf8)";
 use Perl::Build::Pod 'pod_checker';
-my $filepath = "$Bin/../lib/JSON/Create.pod";
-my $errors = pod_checker ($filepath);
-ok (@$errors == 0, "No errors");
+my $dir = "$Bin/../lib/JSON";
+my @files = (qw!Create.pod Create/PP.pm Create/Bool.pm!);
+for my $file (@files) {
+    my $filepath = "$dir/$file";
+    my $errors = pod_checker ($filepath);
+    ok (@$errors == 0, "No errors in $file");
+}
 done_testing ();

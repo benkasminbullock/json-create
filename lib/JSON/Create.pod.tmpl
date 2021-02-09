@@ -13,7 +13,7 @@ This behaviour was added in version [% version %] of the module.
 [%- END -%]
 [%- MACRO handler_undef BLOCK -%]
 
-If your handler returns the undefined value, L</run> prints a warning
+If your handler returns the undefined value, L</create> prints a warning
 L</Undefined value from user routine>, halts further processing of the
 input, and returns the undefined value.
 
@@ -59,7 +59,7 @@ validation of user-supplied JSON> for more about this error.
 =item * Exception handling
 
 Exceptions (C<die>) thrown within C<[% handler %]> callbacks are not
-caught by L</run> but passed through to the parent. Please see the
+caught by L</create> but passed through to the parent. Please see the
 discussion at L</obj> for an example.
 
 =back
@@ -97,7 +97,7 @@ corresponding to L<git commit [% commit.commit %]|[% info.repo
 JSON::Create encodes Perl variables into JSON. The basic routine
 L</create_json> gives common defaults. The stricter version
 L</create_json_strict> accepts only unambiguous inputs. For more
-customization, an object created with L</new> and run with L</run>
+customization, an object created with L</new> and run with L</create>
 allows specifying behaviour in more detail.
 
 JSON::Create handles no string encoding except UTF-8. It supports
@@ -149,7 +149,15 @@ arguments as L</create_json>, L</new> and L</set>.
 If you need to alter the format of the output from the defaults of
 L</create_json> or L</create_json_strict>, create an object with
 L</new> and then set preferences on that object before producing
-output with L</run>.
+output with L</create>.
+
+=head2 create
+
+    my $json = $jc->create ($input);
+
+This does exactly the same thing as L</create_json>, unless the output
+format associated with C<$jc> has been altered using L</Methods for
+formatting the output>. The return value is the output JSON.
 
 =head2 fatal_errors
 
@@ -166,20 +174,12 @@ from warnings to fatal errors.
 
     my $jc = JSON::Create->new ();
 
-Create a new "JSON::Create" object. Use L</run> to generate JSON with
+Create a new "JSON::Create" object. Use L</create> to generate JSON with
 it. It is possible to supply arguments with new:
 
     my $jc = JSON::Create->new (%args);
 
 All of the same values as L</set> may be used.
-
-=head2 run
-
-    my $json = $jc->run ($input);
-
-This does exactly the same thing as L</create_json>, unless the output
-format associated with C<$jc> has been altered using L</Methods for
-formatting the output>. The return value is the output JSON.
 
 =head2 set
 
@@ -219,7 +219,7 @@ This switches on rejection of ambiguous inputs, which means
 
 =back
 
-Calling L</run> with such inputs results in a return value of C<undef>
+Calling L</create> with such inputs results in a return value of C<undef>
 (the undefined value) and a warning being printed. You can override
 the behaviour for objects with L</obj>, L</obj_handler>, for non-data
 types and scalar references with L</type_handler>, and for non-finite
@@ -235,7 +235,7 @@ ASCII-only or character string-only (C<utf8>).
 
 These methods work on the object created with L</new> to format the
 output JSON in a different way from the default when operating
-L</run>. 
+L</create>. 
 
 These methods do not affect the behaviour of L</create_json> or
 L</create_json_strict>.
@@ -339,15 +339,13 @@ yourself.
     $jc->downgrade_utf8 (1);
 
 If this is set to a true value, the return value of L</create_json> or
-L</run> is never upgraded to character strings, or C<utf8>. This
+L</create> is never upgraded to character strings, or C<utf8>. This
 overrides the default behaviour, which is to upgrade the output to
 C<utf8> if any part of the input is C<utf8>, or if the user has
 requested replacement with L</replace_bad_utf8> and there are bad
 characters in the user's input. See L</UNICODE HANDLING> for
 details. All output of JSON::Create is valid UTF-8, regardless of what
 this flag is set to. See L</Output is valid UTF-8>.
-
-This method should be considered experimental.
 
 [% since('0.18') %]
 
@@ -923,7 +921,7 @@ L</Unicode upgrades are not done according to Perl conventions>.
 =item Output is valid UTF-8
 
 All of the output of either the function L</create_json> or the method
-L</run> is valid UTF-8. This does not mean that output strings are
+L</create> is valid UTF-8. This does not mean that output strings are
 marked as Perl character strings (C<utf8>), it means that the output
 has been validated as UTF-8. 
 
@@ -1114,6 +1112,19 @@ methods L</set>, L</sort> and L</cmp> were added in version 0.29.
 
 Version 0.30 rewrote L</set> and related routines in XS and increased
 the speed of the module, and added L</write_json>.
+
+In version 0.31, the method L</run> was renamed L</create>.
+
+=head2 Old names
+
+=over
+
+=item run
+
+The method C<run> was renamed L</create> in version 0.31. The old name
+is not deprecated and will continue to work indefinitely.
+
+=back
 
 =head1 SEE ALSO
 

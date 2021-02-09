@@ -4,9 +4,9 @@ JSON::Create::PP - Pure-Perl version of JSON::Create
 
 =head1 DESCRIPTION
 
-This is a reference and backup module for JSON::Create. It is meant to
-do exactly the same things as JSON::Create, but there are a few
-discrepancies, which should be treated as bugs.
+This is a backup module for JSON::Create. JSON::Create is written
+using Perl XS, but JSON::Create::PP offers the same functionality
+without the XS.
 
 =head1 DEPENDENCIES
 
@@ -25,23 +25,14 @@ objects, and break encapsulation.
 
 =item L<Unicode::UTF8>
 
-This is used to do the validation of UTF-8.
+This is used to handle conversion to and from character strings.
 
 =back
 
 =head1 BUGS
 
-Floating point printing cannot be made to work like the XS version.
-
-The XS version tests for NV or IV directly, but it is next to
-impossible to get this information from Perl without XS.
-
-=head1 TESTING
-
-To test this module, do
-
-    make
-    JSONCreatePP=1 make test
+Printing of floating point numbers cannot be made to work exactly like
+the XS version.
 
 =cut
 
