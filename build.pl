@@ -8,12 +8,11 @@ use Perl::Build;
 
 my %build = (
     make_pod => "$Bin/make-pod.pl",
-#    pod => ['lib/JSON/Create.pod',],
     c => [
-    {
-	dir => '/home/ben/projects/unicode-c',
-	stems => ['unicode',],
-    },
+	{
+	    dir => '/home/ben/projects/unicode-c',
+	    stems => ['unicode',],
+	},
     ],
 );
 
