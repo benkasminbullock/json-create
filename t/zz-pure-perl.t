@@ -17,13 +17,12 @@ if ($ENV{JSONCreatePP}) {
     # What this test does is to run all the tests in t/, except with
     # the XS switched off, so if the environment variable is true, we
     # are running this test from itself, so quit.
-    plan skip_all => "Running pp.t as a sub-test of pp.t";
+    plan skip_all => "Running $0 as a sub-test of $0";
 }
 
 $ENV{JSONCreatePP} = 1;
 my $dir = "$Bin/..";
 chdir $dir or die $!;
-system ("$dir/build.pl");
 my $status = system ("prove -I $dir/blib/arch -I $dir/blib/lib $dir/t/*.t");
 ok ($status == 0, "passed tests");
 # This causes failures during ./build.pl -p
