@@ -54,7 +54,7 @@ use strict;
 use utf8;
 use Carp qw/croak carp confess cluck/;
 use Scalar::Util qw/looks_like_number blessed reftype/;
-use Unicode::UTF8 qw/decode_utf8 valid_utf8/;
+use Unicode::UTF8 qw/decode_utf8 valid_utf8 encode_utf8/;
 use B;
 our $VERSION = '0.30_01';
 
@@ -160,9 +160,10 @@ sub escape_all_unicode
 	$format = "\\u%04X";
     }
     $input =~ s/([\x{007f}-\x{ffff}])/sprintf ($format, ord ($1))/ge;
+    # Convert U+10000 to U+10FFFF into surrogate pairs
     $input =~ s/([\x{10000}-\x{10ffff}])/
-    sprintf ($format, 0xD800 | (((ord ($1)-0x10000) >>10) & 0x3ff)) .
-    sprintf ($format, 0xDC00 |  ((ord ($1)) & 0x3ff))
+	sprintf ($format, 0xD800 | (((ord ($1)-0x10000) >>10) & 0x3ff)) .
+	sprintf ($format, 0xDC00 |  ((ord ($1)) & 0x3ff))
     /gex;
     return $input;
 }
@@ -590,6 +591,9 @@ sub create
 	delete $jc->{output};
 	return undef;
     }
+    if ($jc->{_downgrade_utf8}) {
+	$jc->{output} = encode_utf8 ($jc->{output});
+    }
     return $jc->{output};
 }
 
@@ -620,6 +624,12 @@ sub JSON::Create::PP::sort
 {
     my ($jc, $onoff) = @_;
     $jc->{_sort} = !! $onoff;
+}
+
+sub downgrade_utf8
+{
+    my ($jc, $onoff) = @_;
+    $jc->{_downgrade_utf8} = !! $onoff;
 }
 
 sub set

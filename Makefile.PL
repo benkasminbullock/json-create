@@ -28,7 +28,7 @@ my $tr = {
     # This only affects the file t/json-parse.t, the other tests are
     # unaffected.
 
-    'JSON::Parse' => '0.58',
+    'JSON::Parse' => '0.60',
 };
 
 my %WriteMakefileArgs = (
@@ -65,6 +65,10 @@ my %WriteMakefileArgs = (
 	    },
 #	    homepage => 'http://',
         },
+	no_index => {
+	    # Module for testing only
+	    file => ['t/JCT.pm',],
+	},
     },
     MIN_PERL_VERSION => '5.006001',
     OBJECT => 'Create.o unicode.o',
