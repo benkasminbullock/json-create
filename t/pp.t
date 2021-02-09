@@ -13,6 +13,13 @@ binmode $builder->todo_output,    ":utf8";
 binmode STDOUT, ":encoding(utf8)";
 binmode STDERR, ":encoding(utf8)";
 
+if ($ENV{JSONCreatePP}) {
+    # What this test does is to run all the tests in t/, except with
+    # the XS switched off, so if the environment variable is true, we
+    # are running this test from itself, so quit.
+    plan skip_all => "Running pp.t as a sub-test of pp.t";
+}
+
 $ENV{JSONCreatePP} = 1;
 my $dir = "$Bin/..";
 chdir $dir or die $!;
