@@ -1,8 +1,7 @@
-0.30_04 2021-02-10
+0.30_05 2021-02-10
 
 * Rename "run" to "create"
 * Implement downgrade_utf8 in the PP (Pure Perl) version
-* Test the PP version on installation
 
 0.30 2021-01-04
 
