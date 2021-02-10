@@ -47,7 +47,7 @@ use Carp qw/croak carp confess cluck/;
 use Scalar::Util qw/looks_like_number blessed reftype/;
 use Unicode::UTF8 qw/decode_utf8 valid_utf8 encode_utf8/;
 use B;
-our $VERSION = '0.30_05';
+our $VERSION = '0.30_06';
 
 sub create_json
 {
@@ -318,6 +318,75 @@ sub comma
     }
 }
 
+sub array
+{
+    my ($jc, $input) = @_;
+    $jc->openB ('[');
+    my $i = 0;
+    my $n = scalar (@$input);
+    for my $k (@$input) {
+	if ($i != 0) {
+	    $jc->comma ();
+	}
+	$i++;
+	# This can't be done in create_json_recursively due to the
+	# weird booleans of JSON::Parse.
+	my $bool = isbool (\$k);
+	if ($bool) {
+	    $jc->{output} .= $bool;
+	    next;
+	}
+	my $error = create_json_recursively ($jc, $k);
+	if ($error) {
+	    return $error;
+	}
+    }
+    $jc->closeB (']');
+    return undef;
+}
+
+sub object
+{
+    my ($jc, $input) = @_;
+    $jc->openB ('{');
+    my @keys = keys %$input;
+    if ($jc->{_sort}) {
+	if ($jc->{cmp}) {
+	    @keys = sort {&{$jc->{cmp}} ($a, $b)} @keys;
+	}
+	else {
+	    @keys = sort @keys;
+	}
+    }
+    my $i = 0;
+    my $n = scalar (@keys);
+    for my $k (@keys) {
+	if ($i != 0) {
+	    $jc->comma ();
+	}
+	$i++;
+	my $error;
+	$error = stringify ($jc, $k);
+	if ($error) {
+	    return $error;
+	}
+	$jc->{output} .= ':';
+	# This can't be done in create_json_recursively due to the
+	# weird booleans of JSON::Parse.
+	my $bool = isbool (\$input->{$k});
+	if ($bool) {
+	    $jc->{output} .= $bool;
+	    next;
+	}
+	$error = create_json_recursively ($jc, $input->{$k});
+	if ($error) {
+	    return $error;
+	}
+    }
+    $jc->closeB ('}');
+    return undef;
+}
+
 sub create_json_recursively
 {
     my ($jc, $input) = @_;
@@ -333,7 +402,7 @@ sub create_json_recursively
 	else {
 	    $jc->{output} .= 'false';
 	}
-	return;
+	return undef;
     }
     if (! keys %{$jc->{_handlers}} && ! $jc->{_obj_handler}) {
 	my $origref = $ref;
@@ -347,62 +416,16 @@ sub create_json_recursively
     }
     if ($ref) {
 	if ($ref eq 'HASH') {
-	    $jc->openB ('{');
-	    my @keys = keys %$input;
-	    if ($jc->{_sort}) {
-		if ($jc->{cmp}) {
-		    @keys = sort {&{$jc->{cmp}} ($a, $b)} @keys;
-		}
-		else {
-		    @keys = sort @keys;
-		}
+	    my $error = $jc->object ($input);
+	    if ($error) {
+		return $error;
 	    }
-	    my $i = 0;
-	    my $n = scalar (@keys);
-	    for my $k (@keys) {
-		my $error = stringify ($jc, $k);
-		if ($error) {
-		    return $error;
-		}
-		$jc->{output} .= ':';
-		my $bool = isbool (\$input->{$k});
-		if ($bool) {
-		    $jc->{output} .= $bool;
-		}
-		else {
-		    my $error = create_json_recursively ($jc, $input->{$k});
-		    if ($error) {
-			return $error;
-		    }
-		}
-		$i++;
-		if ($i < $n) {
-		    $jc->comma ();
-		}
-	    }
-	    $jc->closeB ('}');
 	}
 	elsif ($ref eq 'ARRAY') {
-	    $jc->openB ('[');
-	    my $i = 0;
-	    my $n = scalar (@$input);
-	    for my $k (@$input) {
-		my $bool = isbool (\$k);
-		if ($bool) {
-		    $jc->{output} .= $bool;
-		}
-		else {
-		    my $error = create_json_recursively ($jc, $k);
-		    if ($error) {
-			return $error;
-		    }
-		}
-		$i++;
-		if ($i < $n) {
-		    $jc->comma ();
-		}
+	    my $error = $jc->array ($input);
+	    if ($error) {
+		return $error;
 	    }
-	    $jc->closeB (']');
 	}
 	elsif ($ref eq 'SCALAR') {
 	    if ($jc->{_strict}) {

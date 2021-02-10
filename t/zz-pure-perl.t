@@ -20,7 +20,8 @@ if ($ENV{JSONCreatePP}) {
     # What this test does is to run all the tests in t/, except with
     # the XS switched off, so if the environment variable is true, we
     # are running this test from itself, so quit.
-    plan skip_all => "Running $0 as a sub-test of $0";
+    plan 'skip_all',
+	"Skipping PP subtests, $0 is already running in Pure-Perl mode";
 }
 
 $ENV{JSONCreatePP} = 1;
