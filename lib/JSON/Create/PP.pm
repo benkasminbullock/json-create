@@ -108,11 +108,12 @@ sub isfloat
     return $isfloat;
 }
 
-# This is for compatibility with JSON::Parse.
+# Built in booleans. The nasty PL_sv_(yes|no) stuff comes from
+# JSON::Parse. The JSON::Create::Bool is from our own nice module.
 
 sub isbool
 {
-    my ($ref) = @_;
+    my ($input, $ref) = @_;
     my $poo = B::svref_2object ($ref);
     if (ref $poo eq 'B::SPECIAL') {
 	# Leave the following commented-out code as reference for what
@@ -323,20 +324,12 @@ sub array
     my ($jc, $input) = @_;
     $jc->openB ('[');
     my $i = 0;
-    my $n = scalar (@$input);
     for my $k (@$input) {
 	if ($i != 0) {
 	    $jc->comma ();
 	}
 	$i++;
-	# This can't be done in create_json_recursively due to the
-	# weird booleans of JSON::Parse.
-	my $bool = isbool (\$k);
-	if ($bool) {
-	    $jc->{output} .= $bool;
-	    next;
-	}
-	my $error = create_json_recursively ($jc, $k);
+	my $error = create_json_recursively ($jc, $k, \$k);
 	if ($error) {
 	    return $error;
 	}
@@ -359,7 +352,6 @@ sub object
 	}
     }
     my $i = 0;
-    my $n = scalar (@keys);
     for my $k (@keys) {
 	if ($i != 0) {
 	    $jc->comma ();
@@ -371,14 +363,7 @@ sub object
 	    return $error;
 	}
 	$jc->{output} .= ':';
-	# This can't be done in create_json_recursively due to the
-	# weird booleans of JSON::Parse.
-	my $bool = isbool (\$input->{$k});
-	if ($bool) {
-	    $jc->{output} .= $bool;
-	    next;
-	}
-	$error = create_json_recursively ($jc, $input->{$k});
+	$error = create_json_recursively ($jc, $input->{$k}, \$input->{$k});
 	if ($error) {
 	    return $error;
 	}
@@ -389,7 +374,14 @@ sub object
 
 sub create_json_recursively
 {
-    my ($jc, $input) = @_;
+    my ($jc, $input, $input_ref) = @_;
+    if ($input_ref) {
+	my $bool = isbool ($input, $input_ref);
+	if ($bool) {
+	    $jc->{output} .= $bool;
+	    return undef;
+	}
+    }
     if (! defined $input) {
 	$jc->{output} .= 'null';
 	return undef;
@@ -397,10 +389,10 @@ sub create_json_recursively
     my $ref = ref ($input);
     if ($ref eq 'JSON::Create::Bool') {
 	if ($$input) {
-	    $jc->{output} .= 'true';
+	    $jc->{output} .=  'true';
 	}
 	else {
-	    $jc->{output} .= 'false';
+	     $jc->{output} .= 'false';
 	}
 	return undef;
     }
