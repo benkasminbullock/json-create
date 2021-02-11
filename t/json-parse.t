@@ -7,7 +7,7 @@ use JCT;
 use JSON::Parse '0.60', 'parse_json';
 
 my $skip_true_test;
-if ($ENV{JSONCreatePP} && "$]" =~ m!5\.016!) {
+if ($ENV{JSONCreatePP} && "$]" =~ m!5\.01[68]!) {
     note ("Skipping tests of true with PP and Perl $]");
     $skip_true_test = 1;
 }
@@ -24,7 +24,7 @@ my $outq = $jc->create ($q);
 
 
 SKIP: {
-    # This actually looks like a bug in perl 5.16 (I'm not sure
+    # This actually looks like a bug in perl 5.16/5.18 (I'm not sure
     # whether it is a bug in Perl, but it looks like one).
 
     # http://matrix.cpantesters.org/?dist=JSON-Create+0.30_05
@@ -32,9 +32,10 @@ SKIP: {
     # http://matrix.cpantesters.org/?dist=JSON-Create%200.30_05;os=freebsd;perl=5.16.3;reports=1
     # http://matrix.cpantesters.org/?dist=JSON-Create%200.30_05;os=mswin32;perl=5.16.3;reports=1
     # http://matrix.cpantesters.org/?dist=JSON-Create%200.30_05;os=mswin32;perl=5.16.0;reports=1
+    # http://matrix.cpantesters.org/?dist=JSON-Create%200.30_05;os=mswin32;perl=5.18.2;reports=1
 
     if ($skip_true_test) {
-	skip "Unknown problem with Perl 5.16 & JSON::Parse & true & PP ", 2;
+	skip "Unknown problem with Perl 5.16/18 & JSON::Parse & true & PP ", 2;
     }
     like ($out, qr/"hocus":true/); # true bad
     is ($outq, $json_array, "in = out"); # true bad
