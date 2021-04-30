@@ -10,13 +10,13 @@ use FindBin '$Bin';
 use File::Slurper qw!read_text write_text!;
 use Deploy 'make_date';
 
-my $newversion = '0.33_01';
-my $version = '0.33';
+my $version = '0.33_01';
+my $newversion = '0.34';
 
 my @pmfiles = qw!
-lib/JSON/Create.pm
-lib/JSON/Create/Bool.pm
-lib/JSON/Create/PP.pm
+    lib/JSON/Create.pm
+    lib/JSON/Create/Bool.pm
+    lib/JSON/Create/PP.pm
 !;
 
 for my $file (@pmfiles) {
@@ -33,11 +33,12 @@ for my $file (@pmfiles) {
 	warn "$file failed";
     }
 }
-exit;
+#exit;
 my $date = make_date ('-');
 my $changes = "$Bin/Changes";
 my $text = read_text ($changes);
 if ($text =~ s/(\Q$version\E|\Q$newversion\E) ([0-9-]+)/$newversion $date/) {
+    print "$changes OK\n";
     write_text ($changes, $text);
 }
 else {
