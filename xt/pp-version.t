@@ -14,6 +14,9 @@ binmode STDOUT, ":encoding(utf8)";
 binmode STDERR, ":encoding(utf8)";
 use JSON::Create;
 use JSON::Create::PP;
-ok ($JSON::Create::VERSION eq $JSON::Create::PP::VERSION,
+use JSON::Create::Bool;
+cmp_ok ($JSON::Create::VERSION, 'eq', $JSON::Create::PP::VERSION,
     "Version numbers same");
+cmp_ok ($JSON::Create::VERSION, 'eq', $JSON::Create::Bool::VERSION,
+    "Bool version numbers same");
 done_testing ();

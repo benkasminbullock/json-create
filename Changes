@@ -1,3 +1,9 @@
+0.33_01 2021-04-30
+
+* Add newlines after isolated scalars, so
+  create_json (undef, indent => 1) becomes "null\n" not "null"
+* Indent/sort added to create_json for pure-Perl version
+
 0.33 2021-04-29
 
 * Allow parallel testing
